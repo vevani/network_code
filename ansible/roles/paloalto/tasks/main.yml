@@ -74,10 +74,10 @@
     service: "{{ item.service | default('any') }}"
     source_ip: "{{ item.source_addresses | default(['any']) }}"
     destination_ip: "{{ item.destination_addresses | default(['any']) }}"
-    snat_type: "{{ item.snat_type | default('dynamic-ip-and-port') }}"
-    snat_interface: "{{ item.snat_interface | default(omit) }}"
-    dnat_address: "{{ item.dnat_address | default(omit) }}"
-    dnat_port: "{{ item.dnat_port | default(omit) }}"
+    snat_type: "{{ item.translated_source_type | default('dynamic-ip-and-port') }}"
+    snat_interface: "{{ item.translated_source_interface | default(omit) }}"
+    dnat_address: "{{ item.translated_destination_address | default(omit) }}"
+    dnat_port: "{{ item.translated_destination_port | default(omit) }}"
     state: present
   loop: "{{ panos_nat_rules | default([]) }}"
   when: panos_nat_rules is defined

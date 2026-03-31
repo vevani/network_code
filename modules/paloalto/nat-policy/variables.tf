@@ -16,7 +16,7 @@ variable "nat_rules" {
     service                      = optional(string, "any")
     source_addresses             = optional(list(string), ["any"])
     destination_addresses        = optional(list(string), ["any"])
-    translated_source_type       = optional(string, "interface")
+    translated_source_type       = optional(string, "dynamic-ip-and-port")
     translated_source_interface  = optional(string, "ethernet1/1")
     translated_destination_address = optional(string, "")
     translated_destination_port    = optional(number, null)

@@ -19,20 +19,28 @@ resource "panos_nat_rule_group" "this" {
 
       translated_packet {
         source {
-          dynamic_ip_and_port {
-            dynamic "interface_address" {
-              for_each = rule.value.translated_source_type == "interface" ? [1] : []
-              content {
-                interface = rule.value.translated_source_interface
+          # dynamic-ip-and-port with interface address (outbound/SNAT)
+          dynamic "dynamic_ip_and_port" {
+            for_each = rule.value.translated_source_type == "dynamic-ip-and-port" ? [1] : []
+            content {
+              dynamic "interface_address" {
+                for_each = rule.value.translated_source_interface != "" ? [1] : []
+                content {
+                  interface = rule.value.translated_source_interface
+                }
               }
             }
           }
         }
 
-        destination {
-          dynamic_translation {
-            address = rule.value.translated_destination_address
-            port    = rule.value.translated_destination_port
+        # Only create destination translation when an address is explicitly provided
+        dynamic "destination" {
+          for_each = rule.value.translated_destination_address != "" ? [1] : []
+          content {
+            dynamic_translation {
+              address = rule.value.translated_destination_address
+              port    = rule.value.translated_destination_port
+            }
           }
         }
       }
