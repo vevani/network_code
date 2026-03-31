@@ -1,0 +1,6 @@
+---
+# Variables applied to all hosts
+# Sensitive values should be stored in Ansible Vault or an external secrets manager.
+
+# Logging / dry-run defaults
+ansible_diff_mode: false

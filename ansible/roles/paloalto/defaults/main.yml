@@ -1,0 +1,9 @@
+---
+# Default variables for the paloalto role
+# Override at playbook, host, or group_vars level as required.
+
+panos_address_objects: []
+panos_address_groups: []
+panos_security_rules: []
+panos_nat_rules: []
+panos_auto_commit: true
