@@ -1,0 +1,18 @@
+---
+# Cisco Meraki group variables
+# Set MERAKI_DASHBOARD_API_KEY in the environment or provide meraki_api_key here (use Vault).
+# meraki_api_key: "{{ lookup('env', 'MERAKI_DASHBOARD_API_KEY') }}"
+
+meraki_org_name: "Customer A"
+
+# Default network product types for new networks
+meraki_default_product_types:
+  - appliance
+  - switch
+  - wireless
+
+# Default timezone
+meraki_default_timezone: "America/New_York"
+
+# Content filtering defaults
+meraki_url_category_list_size: topSites

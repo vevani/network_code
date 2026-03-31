@@ -1,0 +1,16 @@
+---
+# Ansible Galaxy collection requirements
+# Install with: ansible-galaxy collection install -r requirements.yml
+
+collections:
+  # Cisco Meraki – dashboard API automation
+  - name: cisco.meraki
+    version: ">=2.18.0"
+
+  # Cisco Catalyst SD-WAN (vManage REST API)
+  - name: cisco.catalystwan
+    version: ">=0.3.0"
+
+  # Palo Alto Networks PAN-OS
+  - name: paloaltonetworks.panos
+    version: ">=2.19.0"

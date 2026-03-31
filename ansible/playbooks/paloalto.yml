@@ -1,0 +1,127 @@
+---
+# Palo Alto Networks – configure address objects, address groups, security policy,
+# NAT rules, and commit configuration via the paloaltonetworks.panos collection.
+#
+# Prerequisites:
+#   ansible-galaxy collection install -r requirements.yml
+#   Set panos_username and panos_password in group_vars or vault.
+#   Set ansible_host for each target (panorama or standalone firewall).
+#
+# Usage:
+#   ansible-playbook playbooks/paloalto.yml
+#   ansible-playbook playbooks/paloalto.yml --limit pa_fw_01
+
+- name: Palo Alto Networks – firewall policy and object configuration
+  hosts: paloalto
+  gather_facts: false
+
+  vars:
+    panos_address_objects:
+      - name: "net-workstations"
+        description: "Branch workstation subnet"
+        type: "ip-netmask"
+        value: "192.168.10.0/24"
+        tags:
+          - "branch"
+
+      - name: "net-servers"
+        description: "Branch server subnet"
+        type: "ip-netmask"
+        value: "192.168.20.0/24"
+        tags:
+          - "branch"
+
+      - name: "net-printers"
+        description: "Branch printer subnet"
+        type: "ip-netmask"
+        value: "192.168.30.0/24"
+        tags:
+          - "branch"
+
+      - name: "host-dc-primary"
+        description: "Primary data-centre gateway"
+        type: "ip-netmask"
+        value: "10.0.0.1/32"
+        tags:
+          - "datacenter"
+
+    panos_address_groups:
+      - name: "grp-branch-internal"
+        description: "All internal branch subnets"
+        static_members:
+          - "net-workstations"
+          - "net-servers"
+          - "net-printers"
+        tags:
+          - "branch"
+
+    panos_security_rules:
+      - name: "Allow-Branch-to-DC-HTTPS"
+        description: "Allow branch workstations to reach DC over HTTPS"
+        source_zones:
+          - "branch-zone"
+        source_addresses:
+          - "grp-branch-internal"
+        destination_zones:
+          - "dc-zone"
+        destination_addresses:
+          - "host-dc-primary"
+        applications:
+          - "ssl"
+        services:
+          - "application-default"
+        action: "allow"
+        log_end: true
+
+      - name: "Allow-Branch-Internet"
+        description: "Allow branch workstations outbound internet access"
+        source_zones:
+          - "branch-zone"
+        source_addresses:
+          - "grp-branch-internal"
+        destination_zones:
+          - "untrust"
+        destination_addresses:
+          - "any"
+        applications:
+          - "web-browsing"
+          - "ssl"
+        services:
+          - "application-default"
+        action: "allow"
+        log_end: true
+
+      - name: "Deny-All"
+        description: "Default deny all remaining traffic"
+        source_zones:
+          - "any"
+        source_addresses:
+          - "any"
+        destination_zones:
+          - "any"
+        destination_addresses:
+          - "any"
+        applications:
+          - "any"
+        services:
+          - "any"
+        action: "deny"
+        log_end: true
+
+    panos_nat_rules:
+      - name: "SNAT-Branch-to-Internet"
+        description: "Source NAT branch traffic to internet"
+        source_zones:
+          - "branch-zone"
+        destination_zone: "untrust"
+        source_addresses:
+          - "grp-branch-internal"
+        destination_addresses:
+          - "any"
+        snat_type: "dynamic-ip-and-port"
+        snat_interface: "ethernet1/1"
+
+    panos_auto_commit: true
+
+  roles:
+    - role: paloalto

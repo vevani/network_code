@@ -1,0 +1,93 @@
+---
+# Cisco Meraki – configure networks, security policies, content filtering,
+# AutoVPN, and VLANs via the Meraki Dashboard API.
+#
+# Prerequisites:
+#   ansible-galaxy collection install -r requirements.yml
+#   export MERAKI_DASHBOARD_API_KEY=<your_api_key>
+#
+# Usage:
+#   ansible-playbook playbooks/cisco_meraki.yml
+#   ansible-playbook playbooks/cisco_meraki.yml -e "meraki_org_name='My Org'"
+
+- name: Cisco Meraki – network and security configuration
+  hosts: cisco_meraki
+  gather_facts: false
+
+  vars:
+    # Override these or set them in group_vars/cisco_meraki/main.yml
+    meraki_networks:
+      - name: "customer-a-branch-office-prod"
+        product_types:
+          - appliance
+          - switch
+          - wireless
+        tags:
+          - customer-a
+          - prod
+          - branch-office
+        timezone: "America/New_York"
+
+      - name: "customer-a-hq-prod"
+        product_types:
+          - appliance
+          - switch
+          - wireless
+          - camera
+        tags:
+          - customer-a
+          - prod
+          - headquarters
+        timezone: "America/New_York"
+
+    meraki_firewall_policies:
+      - network: "customer-a-branch-office-prod"
+        rules:
+          - comment: "Allow HTTPS outbound"
+            src_cidr: "192.168.1.0/24"
+            src_port: "Any"
+            dest_cidr: "Any"
+            dest_port: "443"
+            protocol: "tcp"
+            policy: "allow"
+            syslog_enabled: true
+          - comment: "Deny RFC1918 lateral movement"
+            src_cidr: "192.168.0.0/16"
+            src_port: "Any"
+            dest_cidr: "10.0.0.0/8"
+            dest_port: "Any"
+            protocol: "any"
+            policy: "deny"
+            syslog_enabled: true
+
+    meraki_content_filtering_policies:
+      - network: "customer-a-branch-office-prod"
+        allowed_url_patterns:
+          - "*.company.com"
+          - "*.github.com"
+        blocked_url_patterns:
+          - "*gambling*"
+          - "*casino*"
+        blocked_url_categories:
+          - id: "meraki:contentFiltering/category/1"
+            name: "Adult and Pornography"
+
+    meraki_vlans:
+      - network: "customer-a-branch-office-prod"
+        vlan_id: 10
+        name: "Workstations"
+        subnet: "192.168.10.0/24"
+        appliance_ip: "192.168.10.1"
+      - network: "customer-a-branch-office-prod"
+        vlan_id: 20
+        name: "Servers"
+        subnet: "192.168.20.0/24"
+        appliance_ip: "192.168.20.1"
+      - network: "customer-a-branch-office-prod"
+        vlan_id: 30
+        name: "Printers"
+        subnet: "192.168.30.0/24"
+        appliance_ip: "192.168.30.1"
+
+  roles:
+    - role: cisco_meraki

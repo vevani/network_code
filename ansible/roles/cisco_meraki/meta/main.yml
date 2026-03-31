@@ -1,0 +1,14 @@
+galaxy_info:
+  role_name: cisco_meraki
+  author: network_ops
+  description: Manage Cisco Meraki networks, security policies, content filtering, AutoVPN, and VLANs via the Dashboard API
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: all
+  galaxy_tags:
+    - networking
+    - meraki
+    - cisco
+
+dependencies: []

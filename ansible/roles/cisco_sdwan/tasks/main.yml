@@ -1,0 +1,43 @@
+---
+- name: Authenticate to vManage and obtain session token
+  cisco.catalystwan.vmanage_login:
+    manager_authentication:
+      url: "https://{{ vmanage_host }}:{{ vmanage_port | default(443) }}"
+      username: "{{ vmanage_username }}"
+      password: "{{ vmanage_password }}"
+  register: sdwan_session
+  no_log: true
+
+- name: Create or update vEdge feature device templates
+  cisco.catalystwan.device_templates:
+    manager_session: "{{ sdwan_session.session }}"
+    template_name: "{{ item.name }}"
+    template_description: "{{ item.description | default('') }}"
+    device_type: "{{ item.device_type | default(sdwan_default_device_type) }}"
+    device_role: "{{ item.device_role | default(sdwan_default_device_role) }}"
+    feature_template_ids: "{{ item.feature_template_ids | default([]) }}"
+  loop: "{{ sdwan_device_templates | default([]) }}"
+  when: sdwan_device_templates is defined
+
+- name: Attach device templates to devices
+  cisco.catalystwan.device_template_attachments:
+    manager_session: "{{ sdwan_session.session }}"
+    template_name: "{{ item.template_name }}"
+    device_uuid: "{{ item.device_uuid }}"
+    device_variables: "{{ item.variables | default({}) }}"
+  loop: "{{ sdwan_template_attachments | default([]) }}"
+  when: sdwan_template_attachments is defined
+
+- name: Configure centralized VPN policy
+  cisco.catalystwan.centralized_policy:
+    manager_session: "{{ sdwan_session.session }}"
+    policy_name: "{{ sdwan_centralized_policy.name }}"
+    policy_description: "{{ sdwan_centralized_policy.description | default('') }}"
+    assemblies: "{{ sdwan_centralized_policy.assemblies | default([]) }}"
+  when: sdwan_centralized_policy is defined
+
+- name: Activate centralized policy
+  cisco.catalystwan.activate_centralized_policy:
+    manager_session: "{{ sdwan_session.session }}"
+    policy_name: "{{ sdwan_centralized_policy.name }}"
+  when: sdwan_centralized_policy is defined and sdwan_activate_policy | default(false)

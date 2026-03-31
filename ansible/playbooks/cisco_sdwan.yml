@@ -1,0 +1,41 @@
+---
+# Cisco Catalyst SD-WAN – configure device templates and centralized VPN policy
+# via the vManage REST API (cisco.catalystwan collection).
+#
+# Prerequisites:
+#   ansible-galaxy collection install -r requirements.yml
+#   Set vmanage_host, vmanage_username, vmanage_password in group_vars or vault.
+#
+# Usage:
+#   ansible-playbook playbooks/cisco_sdwan.yml
+#   ansible-playbook playbooks/cisco_sdwan.yml -e "sdwan_activate_policy=true"
+
+- name: Cisco Catalyst SD-WAN – templates and policy configuration
+  hosts: cisco_sdwan
+  gather_facts: false
+
+  vars:
+    sdwan_device_templates:
+      - name: "Branch-C8000V-Template"
+        description: "Standard vEdge template for C8000V branch routers"
+        device_type: "vedge-C8000V"
+        device_role: "sdwan-edge"
+        feature_template_ids: []
+
+      - name: "DC-C8000V-Template"
+        description: "Hub template for C8000V data-centre routers"
+        device_type: "vedge-C8000V"
+        device_role: "sdwan-edge"
+        feature_template_ids: []
+
+    sdwan_centralized_policy:
+      name: "CustomerA-VPN-Policy"
+      description: "Centralized hub-and-spoke VPN topology for Customer A"
+      assemblies:
+        - type: topology
+          definition_id: ""   # Populate with the topology definition ID after creation
+
+    sdwan_activate_policy: false
+
+  roles:
+    - role: cisco_sdwan

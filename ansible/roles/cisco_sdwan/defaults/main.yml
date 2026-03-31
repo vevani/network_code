@@ -1,0 +1,8 @@
+---
+# Default variables for the cisco_sdwan role
+# Override at playbook, host, or group_vars level as required.
+
+sdwan_device_templates: []
+sdwan_template_attachments: []
+sdwan_centralized_policy: {}
+sdwan_activate_policy: false

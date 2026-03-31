@@ -1,0 +1,9 @@
+---
+# Default variables for the cisco_meraki role
+# Override at playbook, host, or group_vars level as required.
+
+meraki_networks: []
+meraki_firewall_policies: []
+meraki_content_filtering_policies: []
+meraki_vpn_firewall_policies: []
+meraki_vlans: []

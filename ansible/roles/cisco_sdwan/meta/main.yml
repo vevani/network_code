@@ -1,0 +1,15 @@
+galaxy_info:
+  role_name: cisco_sdwan
+  author: network_ops
+  description: Manage Cisco Catalyst SD-WAN device templates, policy, and template attachments via vManage REST API
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: all
+  galaxy_tags:
+    - networking
+    - sdwan
+    - cisco
+    - catalystwan
+
+dependencies: []

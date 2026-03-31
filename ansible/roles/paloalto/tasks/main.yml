@@ -1,0 +1,93 @@
+---
+- name: Create address objects
+  paloaltonetworks.panos.panos_address_object:
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ panos_username }}"
+      password: "{{ panos_password }}"
+    vsys: "{{ panos_vsys }}"
+    name: "{{ item.name }}"
+    description: "{{ item.description | default('') }}"
+    address_type: "{{ item.type | default('ip-netmask') }}"
+    value: "{{ item.value }}"
+    tag: "{{ item.tags | default([]) }}"
+    state: present
+  loop: "{{ panos_address_objects | default([]) }}"
+  when: panos_address_objects is defined
+  no_log: true
+
+- name: Create address groups
+  paloaltonetworks.panos.panos_address_group:
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ panos_username }}"
+      password: "{{ panos_password }}"
+    vsys: "{{ panos_vsys }}"
+    name: "{{ item.name }}"
+    description: "{{ item.description | default('') }}"
+    static_value: "{{ item.static_members | default([]) }}"
+    tag: "{{ item.tags | default([]) }}"
+    state: present
+  loop: "{{ panos_address_groups | default([]) }}"
+  when: panos_address_groups is defined
+  no_log: true
+
+- name: Configure security policy rules
+  paloaltonetworks.panos.panos_security_rule:
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ panos_username }}"
+      password: "{{ panos_password }}"
+    vsys: "{{ panos_vsys }}"
+    rule_name: "{{ item.name }}"
+    description: "{{ item.description | default('') }}"
+    tag_name: "{{ item.tags | default([]) }}"
+    source_zone: "{{ item.source_zones }}"
+    source_ip: "{{ item.source_addresses | default(['any']) }}"
+    source_user: "{{ item.source_users | default(['any']) }}"
+    destination_zone: "{{ item.destination_zones }}"
+    destination_ip: "{{ item.destination_addresses | default(['any']) }}"
+    application: "{{ item.applications | default(['any']) }}"
+    service: "{{ item.services | default(['application-default']) }}"
+    category: "{{ item.categories | default(['any']) }}"
+    action: "{{ item.action }}"
+    log_start: "{{ item.log_start | default(false) }}"
+    log_end: "{{ item.log_end | default(true) }}"
+    log_setting: "{{ item.log_setting | default('') }}"
+    state: present
+  loop: "{{ panos_security_rules | default([]) }}"
+  when: panos_security_rules is defined
+  no_log: true
+
+- name: Configure NAT rules
+  paloaltonetworks.panos.panos_nat_rule:
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ panos_username }}"
+      password: "{{ panos_password }}"
+    vsys: "{{ panos_vsys }}"
+    rule_name: "{{ item.name }}"
+    description: "{{ item.description | default('') }}"
+    tag_name: "{{ item.tags | default([]) }}"
+    source_zone: "{{ item.source_zones }}"
+    destination_zone: "{{ item.destination_zone }}"
+    service: "{{ item.service | default('any') }}"
+    source_ip: "{{ item.source_addresses | default(['any']) }}"
+    destination_ip: "{{ item.destination_addresses | default(['any']) }}"
+    snat_type: "{{ item.snat_type | default('dynamic-ip-and-port') }}"
+    snat_interface: "{{ item.snat_interface | default(omit) }}"
+    dnat_address: "{{ item.dnat_address | default(omit) }}"
+    dnat_port: "{{ item.dnat_port | default(omit) }}"
+    state: present
+  loop: "{{ panos_nat_rules | default([]) }}"
+  when: panos_nat_rules is defined
+  no_log: true
+
+- name: Commit configuration
+  paloaltonetworks.panos.panos_commit_firewall:
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ panos_username }}"
+      password: "{{ panos_password }}"
+    timeout: "{{ panos_commit_timeout }}"
+  when: panos_auto_commit | default(true)
