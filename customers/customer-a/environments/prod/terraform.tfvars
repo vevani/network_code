@@ -1,31 +1,31 @@
-meraki_org_name = "Cognizant SDWAN LAB"
+meraki_org_name = "Customer A"
 customer_slug   = "customer-a"
 environment     = "prod"
 networks = {
-  INBLR-DC01 = {
-    name              = "INBLR-DC01"
+  dc01 = {
+    name              = "customer-a-dc01-prod"
     include_security  = true
     include_autovpn   = true
   }
-  INBLR-BR01 = {
-    name              = "INBLR-BR01"
+  branch01 = {
+    name              = "customer-a-branch01-prod"
     include_security  = true
     include_autovpn   = true
   }
-  INBLR-BR02 = {
-    name              = "INBLR-BR02"
+  branch02 = {
+    name              = "customer-a-branch02-prod"
     include_security  = true
     include_autovpn   = true
   }
-  vMX1 = {
-    name              = "vMX1"
-    enable_vlans = false
+  vmx1 = {
+    name              = "customer-a-vmx1-prod"
+    enable_vlans      = false
     include_security  = true
     include_autovpn   = true
   }
-  vMX2 = {
-    name              = "vMX2"
-    enable_vlans = false
+  vmx2 = {
+    name              = "customer-a-vmx2-prod"
+    enable_vlans      = false
     include_security  = true
     include_autovpn   = true
   }
