@@ -45,7 +45,7 @@
       delegate_to: localhost
 
     - name: Retrieve VLAN configuration for each appliance network
-      cisco.meraki.meraki_vlan:
+      cisco.meraki.meraki_mx_vlan:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ item.name }}"
         state: query
@@ -81,7 +81,7 @@
       delegate_to: localhost
 
     - name: Retrieve content filtering settings
-      cisco.meraki.meraki_content_filtering:
+      cisco.meraki.meraki_mx_content_filtering:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ item.name }}"
         state: query

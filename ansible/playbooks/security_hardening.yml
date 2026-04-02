@@ -94,7 +94,7 @@
         label: "{{ item.name }}"
 
     - name: Apply content filtering hardening
-      cisco.meraki.meraki_content_filtering:
+      cisco.meraki.meraki_mx_content_filtering:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ item.name }}"
         state: present

@@ -16,14 +16,14 @@ variable "environment" {
 variable "networks" {
   description = "Map of networks to manage and optionally secure. Keys are identifiers; values can set name, product_types, tags, security, vpn, etc."
   type = map(object({
-    name                     = optional(string)
-    product_types            = optional(list(string))
-    tags                     = optional(list(string))
-    timezone                 = optional(string)
-    notes                    = optional(string)
-    enable_vlans             = optional(bool)
-    include_security         = optional(bool)
-    firewall_rules           = optional(list(object({
+    name             = optional(string)
+    product_types    = optional(list(string))
+    tags             = optional(list(string))
+    timezone         = optional(string)
+    notes            = optional(string)
+    enable_vlans     = optional(bool)
+    include_security = optional(bool)
+    firewall_rules = optional(list(object({
       comment        = string
       dest_cidr      = string
       dest_port      = string
@@ -33,7 +33,7 @@ variable "networks" {
       src_port       = string
       syslog_enabled = bool
     })))
-    l7_firewall_rules        = optional(list(object({
+    l7_firewall_rules = optional(list(object({
       policy = string
       type   = string
       value  = string

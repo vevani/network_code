@@ -1,6 +1,6 @@
 resource "panos_security_rule_group" "this" {
-  vsys             = var.vsys
-  position_keyword = var.position_keyword
+  vsys               = var.vsys
+  position_keyword   = var.position_keyword
   position_reference = var.position_reference
 
   dynamic "rule" {

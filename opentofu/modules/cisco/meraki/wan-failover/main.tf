@@ -10,7 +10,7 @@
 resource "meraki_networks_appliance_uplinks_settings" "this" {
   network_id = var.network_id
 
-  interfaces_wan1_enabled        = var.wan1_enabled
+  interfaces_wan1_enabled              = var.wan1_enabled
   interfaces_wan1_vlan_tagging_enabled = var.wan1_vlan != null
   interfaces_wan1_vlan_tagging_vlan_id = var.wan1_vlan
 
@@ -18,7 +18,7 @@ resource "meraki_networks_appliance_uplinks_settings" "this" {
   interfaces_wan1_svis_ipv4_address         = var.wan1_static_ip
   interfaces_wan1_svis_ipv4_gateway         = var.wan1_static_gateway_ip
 
-  interfaces_wan2_enabled        = var.wan2_enabled
+  interfaces_wan2_enabled              = var.wan2_enabled
   interfaces_wan2_vlan_tagging_enabled = var.wan2_vlan != null
   interfaces_wan2_vlan_tagging_vlan_id = var.wan2_vlan
 

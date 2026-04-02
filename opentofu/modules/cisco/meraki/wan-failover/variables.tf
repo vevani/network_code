@@ -102,8 +102,8 @@ variable "failover_and_failback_immediate_enabled" {
 variable "traffic_shaping_rules" {
   description = "Traffic shaping rules for WAN uplinks"
   type = list(object({
-    dscp_tag_value   = optional(number)
-    priority         = optional(string, "normal")
+    dscp_tag_value                       = optional(number)
+    priority                             = optional(string, "normal")
     per_client_bandwidth_limits_settings = optional(string, "network default")
     definitions = list(object({
       type  = string

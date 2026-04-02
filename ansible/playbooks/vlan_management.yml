@@ -83,7 +83,7 @@
       when: vlan_action != "delete"
 
     - name: Create or update VLANs
-      cisco.meraki.meraki_vlan:
+      cisco.meraki.meraki_mx_vlan:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ network_name }}"
         state: present
@@ -100,7 +100,7 @@
       when: vlan_action in ["create", "update"]
 
     - name: Delete VLANs
-      cisco.meraki.meraki_vlan:
+      cisco.meraki.meraki_mx_vlan:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ network_name }}"
         state: absent
@@ -113,7 +113,7 @@
       when: vlan_action == "delete"
 
     - name: Verify VLAN configuration
-      cisco.meraki.meraki_vlan:
+      cisco.meraki.meraki_mx_vlan:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ network_name }}"
         state: query

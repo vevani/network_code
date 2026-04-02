@@ -6,10 +6,10 @@ variable "network_id" {
 variable "vlans" {
   description = "List of VLANs to configure on the MX appliance"
   type = list(object({
-    vlan_id      = number
-    name         = string
-    subnet       = string
-    appliance_ip = string
+    vlan_id       = number
+    name          = string
+    subnet        = string
+    appliance_ip  = string
     dhcp_handling = optional(string, "Run a DHCP server")
   }))
   default = []
