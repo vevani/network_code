@@ -169,7 +169,7 @@
       when: incident_block_ips | length > 0
 
     - name: Apply emergency firewall rules to all networks
-      cisco.meraki.meraki_mx_l3_firewall:
+      cisco.meraki.networks_appliance_firewall_l3_firewall_rules:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ item.name }}"
         state: present
@@ -182,7 +182,7 @@
         - "'appliance' in (item.productTypes | default([]))"
 
     - name: Retrieve network list for isolation
-      cisco.meraki.meraki_network:
+      cisco.meraki.networks:
         org_name: "{{ meraki_org_name }}"
         state: query
       register: meraki_network_list

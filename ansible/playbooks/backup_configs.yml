@@ -32,7 +32,7 @@
       delegate_to: localhost
 
     - name: Retrieve all networks in the organization
-      cisco.meraki.meraki_network:
+      cisco.meraki.networks:
         org_name: "{{ meraki_org_name }}"
         state: query
       register: meraki_all_networks
@@ -45,7 +45,7 @@
       delegate_to: localhost
 
     - name: Retrieve VLAN configuration for each appliance network
-      cisco.meraki.meraki_mx_vlan:
+      cisco.meraki.networks_appliance_vlans:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ item.name }}"
         state: query
@@ -63,7 +63,7 @@
       delegate_to: localhost
 
     - name: Retrieve firewall rules for each appliance network
-      cisco.meraki.meraki_mx_l3_firewall:
+      cisco.meraki.networks_appliance_firewall_l3_firewall_rules:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ item.name }}"
         state: query
@@ -81,7 +81,7 @@
       delegate_to: localhost
 
     - name: Retrieve content filtering settings
-      cisco.meraki.meraki_mx_content_filtering:
+      cisco.meraki.networks_appliance_content_filtering:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ item.name }}"
         state: query
@@ -148,7 +148,9 @@
       delegate_to: localhost
 
     - name: Backup address objects
-      paloaltonetworks.panos.panos_address_object_facts:
+      paloaltonetworks.panos.panos_address_object:
+        state: gathered
+        gathered_filter: "*"
       register: panos_address_backup
 
     - name: Save address objects
@@ -159,7 +161,9 @@
       delegate_to: localhost
 
     - name: Backup security rules
-      paloaltonetworks.panos.panos_security_rule_facts:
+      paloaltonetworks.panos.panos_security_rule:
+        state: gathered
+        gathered_filter: "*"
       register: panos_rules_backup
 
     - name: Save security rules

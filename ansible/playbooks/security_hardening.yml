@@ -70,7 +70,7 @@
 
   tasks:
     - name: Retrieve organization networks
-      cisco.meraki.meraki_network:
+      cisco.meraki.networks:
         org_name: "{{ meraki_org_name }}"
         state: query
       register: meraki_networks_result
@@ -84,7 +84,7 @@
              list }}
 
     - name: Apply hardening firewall rules
-      cisco.meraki.meraki_mx_l3_firewall:
+      cisco.meraki.networks_appliance_firewall_l3_firewall_rules:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ item.name }}"
         state: present
@@ -94,7 +94,7 @@
         label: "{{ item.name }}"
 
     - name: Apply content filtering hardening
-      cisco.meraki.meraki_mx_content_filtering:
+      cisco.meraki.networks_appliance_content_filtering:
         org_name: "{{ meraki_org_name }}"
         net_name: "{{ item.name }}"
         state: present
@@ -155,7 +155,9 @@
           - "security-hardening"
 
     - name: Verify no rules allow 'any' application with 'any' service
-      paloaltonetworks.panos.panos_security_rule_facts:
+      paloaltonetworks.panos.panos_security_rule:
+        state: gathered
+        gathered_filter: "*"
       register: panos_all_rules
 
     - name: Flag overly permissive rules
@@ -163,7 +165,7 @@
         msg: >-
           WARNING: Rule '{{ item.rule_name }}' allows application={{ item.application }}
           service={{ item.service }} — review for hardening
-      loop: "{{ panos_all_rules.rule_details | default([]) }}"
+      loop: "{{ panos_all_rules.gathered | default([]) }}"
       loop_control:
         label: "{{ item.rule_name }}"
       when:
