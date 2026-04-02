@@ -1,0 +1,96 @@
+name: OpenTofu Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      customer:
+        description: "Customer name (e.g. customer-a)"
+        required: true
+        type: string
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      action:
+        description: "Action to perform"
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+
+permissions:
+  contents: read
+
+env:
+  TF_INPUT: "false"
+  WORKING_DIR: "opentofu/customers/${{ inputs.customer }}/environments/${{ inputs.environment }}"
+
+jobs:
+  plan:
+    name: OpenTofu Plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.6.0"
+
+      - name: Verify environment directory exists
+        run: |
+          if [ ! -d "${{ env.WORKING_DIR }}" ]; then
+            echo "::error::Environment directory not found: ${{ env.WORKING_DIR }}"
+            exit 1
+          fi
+
+      - name: Initialize
+        run: tofu init -upgrade
+        working-directory: ${{ env.WORKING_DIR }}
+
+      - name: Plan
+        run: tofu plan -var-file=terraform.tfvars -out=tfplan
+        working-directory: ${{ env.WORKING_DIR }}
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ inputs.customer }}-${{ inputs.environment }}
+          path: ${{ env.WORKING_DIR }}/tfplan
+          retention-days: 7
+
+  apply:
+    name: OpenTofu Apply
+    if: inputs.action == 'apply'
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.6.0"
+
+      - name: Initialize
+        run: tofu init -upgrade
+        working-directory: ${{ env.WORKING_DIR }}
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ inputs.customer }}-${{ inputs.environment }}
+          path: ${{ env.WORKING_DIR }}
+
+      - name: Apply
+        run: tofu apply tfplan
+        working-directory: ${{ env.WORKING_DIR }}

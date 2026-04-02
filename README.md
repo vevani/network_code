@@ -1,51 +1,119 @@
-## OpenTofu Network Infrastructure
+# Network Infrastructure as Code
 
-This repository provides a production-oriented OpenTofu (Terraform-compatible) structure for managing multi-customer, multi-environment network infrastructure across three technology stacks:
+This monorepo manages multi-customer, multi-environment network infrastructure using two complementary automation tools:
 
-- **Cisco Meraki** – networks, VLANs, MX security, AutoVPN, switch port profiles
-- **Cisco Catalyst SD-WAN** – vEdge device templates and centralized VPN policy
-- **Palo Alto Networks PAN-OS** – address objects/groups, security policy, NAT policy
-
-It also contains an equivalent **Ansible** directory (`ansible/`) with roles and playbooks for the same three stacks (see [ansible/README.md](ansible/README.md)).
-
-Core principles:
-
-- Modular design for reusability and composability
-- Customer- and environment-scoped state separation
-- Provider/version pinning and sensible defaults
-
-### OpenTofu – module catalogue
-
-| Vendor | Module path | Purpose |
+| Tool | Directory | Purpose |
 |---|---|---|
-| Cisco Meraki | `modules/cisco/meraki/network` | Network + VLAN settings |
-| Cisco Meraki | `modules/cisco/meraki/vlan` | MX appliance VLAN configuration |
-| Cisco Meraki | `modules/cisco/meraki/switch-port-profile` | Switch port profiles |
-| Cisco Meraki | `modules/cisco/meraki/mx-security/firewall-rules` | L3/L7 firewall rules |
-| Cisco Meraki | `modules/cisco/meraki/mx-security/content-filtering` | Content filtering |
-| Cisco Meraki | `modules/cisco/meraki/autovpn` | AutoVPN site-to-site |
-| Cisco Catalyst SD-WAN | `modules/cisco/sdwan/vedge-template` | Feature device templates |
-| Cisco Catalyst SD-WAN | `modules/cisco/sdwan/vpn-policy` | Centralized VPN policy |
-| Palo Alto | `modules/paloalto/address-object` | Address objects and groups |
-| Palo Alto | `modules/paloalto/security-policy` | Security policy rule groups |
-| Palo Alto | `modules/paloalto/nat-policy` | NAT rule groups |
+| **OpenTofu** | [`opentofu/`](opentofu/README.md) | Declarative infrastructure provisioning and state management |
+| **Ansible** | [`ansible/`](ansible/README.md) | Imperative configuration management, orchestration, and day-2 operations |
 
-### OpenTofu – prerequisites
+Both tools support the same three vendor stacks:
 
-- OpenTofu CLI installed (>= 1.6)
-- `MERAKI_DASHBOARD_API_KEY` – for Meraki modules
-- `SDWAN_USERNAME` / `SDWAN_PASSWORD` + vManage URL configured in `providers.tf` – for SD-WAN modules
-- `PANOS_HOSTNAME` / `PANOS_USERNAME` / `PANOS_PASSWORD` configured in `providers.tf` – for PAN-OS modules
+- **Cisco Meraki** – Dashboard-managed networks, VLANs, MX security, AutoVPN
+- **Cisco Catalyst SD-WAN** – vManage device templates and centralized VPN policy
+- **Palo Alto Networks PAN-OS** – Address objects, security policy, NAT policy
 
-### OpenTofu – quickstart (Customer A prod)
+## When to Use OpenTofu vs. Ansible
+
+| Scenario | Recommended Tool | Reason |
+|---|---|---|
+| **Greenfield provisioning** — spinning up new networks, VLANs, or policies from scratch | OpenTofu | Declarative state tracking ensures reproducibility and drift detection |
+| **Brownfield import** — adopting existing infrastructure into code | OpenTofu | `tofu import` and the helper script align live state with module definitions |
+| **Day-2 configuration changes** — updating firewall rules, content filtering, or NAT policies | Either | OpenTofu for state-tracked changes; Ansible for ad-hoc or rolling updates |
+| **Multi-device orchestration** — pushing config to many firewalls or routers in sequence | Ansible | Inventory-driven execution with `--limit` and rolling update strategies |
+| **Compliance audits / drift detection** — verifying infrastructure matches desired state | OpenTofu | `tofu plan` highlights any drift from the declared configuration |
+| **Emergency break-glass changes** — rapid config pushes outside normal workflow | Ansible | Playbook execution is immediate without state-file locking |
+| **Template-driven device onboarding** — SD-WAN or switch templates to many devices | Ansible | Loop-based task execution scales well across large inventories |
+| **Secret rotation** — rotating API keys, passwords, or certificates | Ansible | Vault integration and `no_log` provide secure credential handling |
+
+## Repository Structure
 
 ```
-cd customers/customer-a/environments/prod
+.
+├── README.md                       # This file
+├── ARCHITECTURE.md                 # Detailed architecture documentation
+├── Makefile                        # Top-level automation targets
+├── requirements.txt                # Python dependencies (for scripts and tests)
+├── .github/
+│   └── workflows/                  # CI/CD pipelines
+│       ├── ci.yml                  # Validation: lint, format, test
+│       ├── opentofu-deploy.yml     # OpenTofu plan and apply
+│       └── ansible-deploy.yml      # Ansible playbook execution
+├── opentofu/                       # OpenTofu modules and customer environments
+│   ├── README.md
+│   ├── modules/                    # Reusable modules by vendor
+│   │   ├── cisco/meraki/
+│   │   ├── cisco/sdwan/
+│   │   └── paloalto/
+│   └── customers/                  # Per-customer, per-environment configs
+│       └── customer-a/
+│           ├── shared/
+│           └── environments/{dev,staging,prod}/
+├── ansible/                        # Ansible roles, playbooks, and inventories
+│   ├── README.md
+│   ├── roles/                      # Vendor-specific roles
+│   │   ├── cisco_meraki/
+│   │   ├── cisco_sdwan/
+│   │   └── paloalto/
+│   ├── playbooks/                  # End-to-end and site-wide playbooks
+│   └── inventories/                # Per-customer, per-environment inventories
+│       └── customer-a/{dev,staging,prod}/
+├── scripts/                        # Helper utilities
+│   └── meraki_to_state.py          # Brownfield import for Meraki → OpenTofu state
+└── tests/                          # Python unit tests
+    └── test_meraki_to_state.py
+```
+
+## Quick Start
+
+### OpenTofu
+
+```bash
+cd opentofu/customers/customer-a/environments/prod
 tofu init
 tofu plan -var-file=terraform.tfvars
 tofu apply -var-file=terraform.tfvars
 ```
 
-Provider authentication uses `MERAKI_DASHBOARD_API_KEY`. Organization lookup is performed by name via the shared customer module.
+### Ansible
 
+```bash
+cd ansible
+ansible-galaxy collection install -r requirements.yml
+ansible-playbook playbooks/site.yml -i inventories/customer-a/prod/
+```
+
+## Prerequisites
+
+| Requirement | Version |
+|---|---|
+| OpenTofu CLI | >= 1.6 |
+| Ansible | >= 2.15 |
+| Python | >= 3.10 |
+
+### Environment Variables
+
+| Technology | Variables |
+|---|---|
+| Cisco Meraki | `MERAKI_DASHBOARD_API_KEY` |
+| Cisco Catalyst SD-WAN | `SDWAN_USERNAME`, `SDWAN_PASSWORD` |
+| Palo Alto Networks | `PANOS_HOSTNAME`, `PANOS_USERNAME`, `PANOS_PASSWORD` |
+
+> **Security**: Never hardcode credentials. Use environment variables, Ansible Vault, or an external secrets manager.
+
+## CI/CD
+
+The repository includes GitHub Actions workflows:
+
+- **`ci.yml`** — Runs on every push and pull request. Validates OpenTofu formatting, Ansible syntax, and Python tests.
+- **`opentofu-deploy.yml`** — Manually triggered. Runs `tofu plan` and optionally `tofu apply` for a specified customer/environment.
+- **`ansible-deploy.yml`** — Manually triggered. Executes an Ansible playbook against a specified customer/environment.
+
+See [`.github/workflows/`](.github/workflows/) for configuration details.
+
+## Contributing
+
+1. Create a feature branch from `main`.
+2. Make changes and ensure CI passes (`make validate`, `make test`).
+3. Submit a pull request for review.
 

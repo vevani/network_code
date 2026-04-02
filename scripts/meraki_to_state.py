@@ -12,8 +12,8 @@ Requirements:
 - OpenTofu CLI available on PATH (defaults to 'tofu')
 
 Example:
-  python network-infra/scripts/meraki_to_state.py \
-    --env-dir /home/user/projects/network_code/network-infra/customers/customer-a/environments/prod
+  python scripts/meraki_to_state.py \
+    --env-dir opentofu/customers/customer-a/environments/prod
 
 Notes:
 - This script targets the module structure in this repository (branch + HQ networks
