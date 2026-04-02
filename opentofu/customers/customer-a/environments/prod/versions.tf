@@ -1,9 +1,9 @@
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.11.0"
   required_providers {
     meraki = {
-      source  = "cisco-open/meraki"
-      version = "~> 0.3.0"
+      source  = "CiscoDevNet/meraki"
+      version = "~> 1.0"
     }
   }
 }
