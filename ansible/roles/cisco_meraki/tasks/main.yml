@@ -1,59 +1,16 @@
 ---
-- name: Ensure Meraki networks exist
-  cisco.meraki.networks:
-    state: present
-    auth_key: "{{ meraki_api_key | default(omit) }}"
-    org_name: "{{ meraki_org_name }}"
-    net_name: "{{ item.name }}"
-    type: "{{ item.product_types | join(' ') }}"
-    tags: "{{ item.tags | default([]) }}"
-    timezone: "{{ item.timezone | default(meraki_default_timezone) }}"
-  loop: "{{ meraki_networks }}"
-  when: meraki_networks is defined
-  register: meraki_network_results
+# cisco_meraki role – orchestrate sub-tasks in order
+- name: Include network provisioning tasks
+  ansible.builtin.include_tasks: networks.yml
 
-- name: Configure MX L3 firewall rules
-  cisco.meraki.meraki_mx_l3_firewall:
-    state: present
-    auth_key: "{{ meraki_api_key | default(omit) }}"
-    org_name: "{{ meraki_org_name }}"
-    net_name: "{{ item.network }}"
-    rules: "{{ item.rules }}"
-  loop: "{{ meraki_firewall_policies | default([]) }}"
-  when: meraki_firewall_policies is defined
+- name: Include firewall rule tasks
+  ansible.builtin.include_tasks: firewall.yml
 
-- name: Configure MX content filtering
-  cisco.meraki.meraki_content_filtering:
-    state: present
-    auth_key: "{{ meraki_api_key | default(omit) }}"
-    org_name: "{{ meraki_org_name }}"
-    net_name: "{{ item.network }}"
-    allowed_urls: "{{ item.allowed_url_patterns | default([]) }}"
-    blocked_urls: "{{ item.blocked_url_patterns | default([]) }}"
-    blocked_categories: "{{ item.blocked_url_categories | default([]) }}"
-    category_list_size: "{{ item.url_category_list_size | default(meraki_url_category_list_size) }}"
-  loop: "{{ meraki_content_filtering_policies | default([]) }}"
-  when: meraki_content_filtering_policies is defined
+- name: Include content filtering tasks
+  ansible.builtin.include_tasks: content_filtering.yml
 
-- name: Configure AutoVPN (site-to-site)
-  cisco.meraki.meraki_mx_vpn_firewall:
-    state: present
-    auth_key: "{{ meraki_api_key | default(omit) }}"
-    org_name: "{{ meraki_org_name }}"
-    net_name: "{{ item.network }}"
-    rules: "{{ item.rules | default([]) }}"
-  loop: "{{ meraki_vpn_firewall_policies | default([]) }}"
-  when: meraki_vpn_firewall_policies is defined
+- name: Include AutoVPN tasks
+  ansible.builtin.include_tasks: autovpn.yml
 
-- name: Configure switch VLANs
-  cisco.meraki.meraki_vlan:
-    state: present
-    auth_key: "{{ meraki_api_key | default(omit) }}"
-    org_name: "{{ meraki_org_name }}"
-    net_name: "{{ item.network }}"
-    vlan_id: "{{ item.vlan_id }}"
-    name: "{{ item.name }}"
-    subnet: "{{ item.subnet }}"
-    gateway_ip: "{{ item.appliance_ip }}"
-  loop: "{{ meraki_vlans | default([]) }}"
-  when: meraki_vlans is defined
+- name: Include VLAN tasks
+  ansible.builtin.include_tasks: vlans.yml

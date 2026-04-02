@@ -1,0 +1,13 @@
+---
+# Cisco Meraki group variables — dev environment
+# Set MERAKI_DASHBOARD_API_KEY in the environment or provide meraki_api_key via Vault.
+
+meraki_org_name: "Customer A"
+
+meraki_default_product_types:
+  - appliance
+  - switch
+  - wireless
+
+meraki_default_timezone: "America/New_York"
+meraki_url_category_list_size: topSites

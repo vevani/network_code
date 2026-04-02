@@ -1,0 +1,9 @@
+---
+- name: Attach device templates to devices
+  cisco.catalystwan.device_template_attachments:
+    manager_session: "{{ sdwan_session.session }}"
+    template_name: "{{ item.template_name }}"
+    device_uuid: "{{ item.device_uuid }}"
+    device_variables: "{{ item.variables | default({}) }}"
+  loop: "{{ sdwan_template_attachments | default([]) }}"
+  when: sdwan_template_attachments is defined

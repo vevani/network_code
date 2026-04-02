@@ -1,0 +1,22 @@
+---
+# Site-wide playbook — run all vendor playbooks in sequence.
+# Usage:
+#   ansible-playbook playbooks/site.yml -i inventories/customer-a/prod/
+#   ansible-playbook playbooks/site.yml -i inventories/customer-a/prod/ --tags meraki
+
+- name: Cisco Meraki – network and security configuration
+  import_playbook: cisco_meraki.yml
+  tags:
+    - meraki
+    - cisco
+
+- name: Cisco Catalyst SD-WAN – templates and policy configuration
+  import_playbook: cisco_sdwan.yml
+  tags:
+    - sdwan
+    - cisco
+
+- name: Palo Alto Networks – firewall policy and object configuration
+  import_playbook: paloalto.yml
+  tags:
+    - paloalto

@@ -1,6 +1,6 @@
 ---
-# Cisco Catalyst SD-WAN group variables
-# vManage controller connection details (use Vault for credentials).
+# Cisco Catalyst SD-WAN group variables — prod environment
+# Set vManage connection details via Vault.
 
 # vmanage_host: "198.51.100.10"
 # vmanage_port: 443
@@ -8,7 +8,5 @@
 # vmanage_password: "{{ lookup('env', 'SDWAN_PASSWORD') }}"
 
 sdwan_validate_certs: true
-
-# Default device template settings
 sdwan_default_device_type: "vedge-C8000V"
 sdwan_default_device_role: "sdwan-edge"

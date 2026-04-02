@@ -1,0 +1,13 @@
+---
+- name: Configure switch VLANs
+  cisco.meraki.meraki_vlan:
+    state: present
+    auth_key: "{{ meraki_api_key | default(omit) }}"
+    org_name: "{{ meraki_org_name }}"
+    net_name: "{{ item.network }}"
+    vlan_id: "{{ item.vlan_id }}"
+    name: "{{ item.name }}"
+    subnet: "{{ item.subnet }}"
+    gateway_ip: "{{ item.appliance_ip }}"
+  loop: "{{ meraki_vlans | default([]) }}"
+  when: meraki_vlans is defined

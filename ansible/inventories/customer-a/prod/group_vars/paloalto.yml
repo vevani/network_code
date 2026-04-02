@@ -1,6 +1,6 @@
 ---
-# Palo Alto Networks group variables
-# Panorama / firewall connection details (use Vault for credentials).
+# Palo Alto Networks group variables — prod environment
+# Set PAN-OS connection details via Vault.
 
 # panorama_host: "198.51.100.20"
 # pa_fw_01_host: "198.51.100.21"
@@ -8,9 +8,5 @@
 # panos_password: "{{ lookup('env', 'PANOS_PASSWORD') }}"
 
 panos_validate_certs: true
-
-# Default vsys for policy/object operations
 panos_vsys: "vsys1"
-
-# Commit timeout (seconds)
 panos_commit_timeout: 300

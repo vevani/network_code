@@ -1,6 +1,6 @@
-## Ansible Automation
+# Ansible Network Automation
 
-This directory mirrors the OpenTofu module structure and provides Ansible playbooks and roles for the same three network technology stacks:
+This directory provides Ansible playbooks and roles for managing multi-customer, multi-environment network infrastructure across three technology stacks:
 
 | Technology | Ansible Collection | Role |
 |---|---|---|
@@ -8,73 +8,130 @@ This directory mirrors the OpenTofu module structure and provides Ansible playbo
 | Cisco Catalyst SD-WAN | `cisco.catalystwan` | `roles/cisco_sdwan` |
 | Palo Alto Networks PAN-OS | `paloaltonetworks.panos` | `roles/paloalto` |
 
-### Directory layout
+## Directory Layout
 
 ```
 ansible/
-├── ansible.cfg                    # Ansible defaults (inventory path, callbacks, etc.)
-├── requirements.yml               # Galaxy collection requirements
-├── inventory/
-│   └── hosts.yml                  # Sample static inventory
-├── group_vars/
-│   ├── all/main.yml               # Variables common to all hosts
-│   ├── cisco_meraki/main.yml      # Meraki-specific defaults
-│   ├── cisco_sdwan/main.yml       # SD-WAN-specific defaults
-│   └── paloalto/main.yml          # PAN-OS-specific defaults
+├── ansible.cfg                          # Ansible defaults (inventory path, callbacks, etc.)
+├── requirements.yml                     # Galaxy collection requirements
+├── inventories/                         # Multi-customer, multi-environment inventories
+│   └── customer-a/
+│       ├── dev/
+│       │   ├── hosts.yml               # Inventory for dev environment
+│       │   └── group_vars/
+│       │       ├── all.yml             # Common variables (env name, customer name)
+│       │       ├── cisco_meraki.yml    # Meraki-specific variables
+│       │       ├── cisco_sdwan.yml     # SD-WAN-specific variables
+│       │       └── paloalto.yml        # PAN-OS-specific variables
+│       ├── staging/
+│       │   ├── hosts.yml
+│       │   └── group_vars/
+│       └── prod/
+│           ├── hosts.yml
+│           └── group_vars/
 ├── roles/
-│   ├── cisco_meraki/              # Tasks, defaults, and meta for Meraki
-│   ├── cisco_sdwan/               # Tasks, defaults, and meta for Catalyst SD-WAN
-│   └── paloalto/                  # Tasks, defaults, and meta for PAN-OS
-└── playbooks/
-    ├── cisco_meraki.yml           # Meraki end-to-end playbook
-    ├── cisco_sdwan.yml            # SD-WAN end-to-end playbook
-    └── paloalto.yml               # PAN-OS end-to-end playbook
+│   ├── cisco_meraki/
+│   │   ├── defaults/main.yml           # Role defaults
+│   │   ├── handlers/main.yml           # Notification-driven tasks
+│   │   ├── meta/main.yml               # Galaxy metadata
+│   │   └── tasks/
+│   │       ├── main.yml                # Orchestrator — includes sub-tasks
+│   │       ├── networks.yml            # Network provisioning
+│   │       ├── firewall.yml            # MX L3 firewall rules
+│   │       ├── content_filtering.yml   # MX content filtering
+│   │       ├── autovpn.yml             # AutoVPN site-to-site
+│   │       └── vlans.yml               # VLAN configuration
+│   ├── cisco_sdwan/
+│   │   ├── defaults/main.yml
+│   │   ├── handlers/main.yml
+│   │   ├── meta/main.yml
+│   │   └── tasks/
+│   │       ├── main.yml                # Orchestrator — includes sub-tasks
+│   │       ├── auth.yml                # vManage authentication
+│   │       ├── templates.yml           # Device template management
+│   │       ├── attachments.yml         # Template-to-device attachments
+│   │       └── policy.yml              # Centralized VPN policy
+│   └── paloalto/
+│       ├── defaults/main.yml
+│       ├── handlers/main.yml
+│       ├── meta/main.yml
+│       └── tasks/
+│           ├── main.yml                # Orchestrator — includes sub-tasks
+│           ├── address_objects.yml      # Address objects and groups
+│           ├── security_policy.yml      # Security policy rules
+│           ├── nat_policy.yml           # NAT rules
+│           └── commit.yml               # Commit configuration
+├── playbooks/
+│   ├── site.yml                        # Run all vendor playbooks
+│   ├── cisco_meraki.yml                # Meraki end-to-end playbook
+│   ├── cisco_sdwan.yml                 # SD-WAN end-to-end playbook
+│   └── paloalto.yml                    # PAN-OS end-to-end playbook
+├── filter_plugins/                     # Custom Jinja2 filters
+└── module_utils/                       # Shared module utilities
 ```
 
-### Prerequisites
+## Prerequisites
 
 1. Install Ansible (>= 2.15):
 
-   ```
+   ```bash
    pip install ansible
    ```
 
 2. Install required Galaxy collections:
 
-   ```
+   ```bash
    ansible-galaxy collection install -r requirements.yml
    ```
 
-3. Set required environment variables / vault secrets (see `group_vars/` for variable names):
+3. Set required environment variables or vault secrets (see `inventories/` `group_vars` for variable names):
 
-   | Technology | Environment Variable |
+   | Technology | Environment Variables |
    |---|---|
    | Cisco Meraki | `MERAKI_DASHBOARD_API_KEY` |
    | Cisco Catalyst SD-WAN | `SDWAN_USERNAME`, `SDWAN_PASSWORD` |
    | Palo Alto Networks | `PANOS_USERNAME`, `PANOS_PASSWORD` |
 
-### Running a playbook
+## Running a Playbook
+
+Specify the inventory for the target customer and environment with `-i`:
 
 ```bash
-# Cisco Meraki
-ansible-playbook playbooks/cisco_meraki.yml
+# Cisco Meraki — customer-a prod
+ansible-playbook playbooks/cisco_meraki.yml -i inventories/customer-a/prod/
 
-# Cisco Catalyst SD-WAN
-ansible-playbook playbooks/cisco_sdwan.yml
+# Cisco Catalyst SD-WAN — customer-a dev
+ansible-playbook playbooks/cisco_sdwan.yml -i inventories/customer-a/dev/
 
-# Palo Alto Networks (all hosts)
-ansible-playbook playbooks/paloalto.yml
+# Palo Alto Networks — customer-a prod, specific host
+ansible-playbook playbooks/paloalto.yml -i inventories/customer-a/prod/ --limit pa_fw_01
 
-# Palo Alto Networks (specific host)
-ansible-playbook playbooks/paloalto.yml --limit pa_fw_01
+# All vendors — customer-a staging
+ansible-playbook playbooks/site.yml -i inventories/customer-a/staging/
+
+# All vendors — only Meraki (using tags)
+ansible-playbook playbooks/site.yml -i inventories/customer-a/prod/ --tags meraki
 ```
 
-### Using Ansible Vault for credentials
+## Adding a New Customer
+
+1. Create a new customer directory under `inventories/`:
+   ```bash
+   mkdir -p inventories/customer-b/{dev,staging,prod}/group_vars
+   ```
+2. Copy and adapt the inventory files from an existing customer:
+   ```bash
+   cp inventories/customer-a/prod/hosts.yml inventories/customer-b/prod/hosts.yml
+   cp inventories/customer-a/prod/group_vars/*.yml inventories/customer-b/prod/group_vars/
+   ```
+3. Update host addresses, credentials, and customer-specific variables.
+
+## Using Ansible Vault for Credentials
 
 ```bash
-# Create an encrypted secrets file
-ansible-vault create group_vars/all/vault.yml
+# Create an encrypted secrets file for a specific customer/environment
+ansible-vault create inventories/customer-a/prod/group_vars/vault.yml
 
 # Run a playbook with vault
-ansible-playbook playbooks/paloalto.yml --ask-vault-pass
+ansible-playbook playbooks/paloalto.yml -i inventories/customer-a/prod/ --ask-vault-pass
 ```

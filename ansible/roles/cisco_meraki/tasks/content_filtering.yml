@@ -1,0 +1,13 @@
+---
+- name: Configure MX content filtering
+  cisco.meraki.meraki_content_filtering:
+    state: present
+    auth_key: "{{ meraki_api_key | default(omit) }}"
+    org_name: "{{ meraki_org_name }}"
+    net_name: "{{ item.network }}"
+    allowed_urls: "{{ item.allowed_url_patterns | default([]) }}"
+    blocked_urls: "{{ item.blocked_url_patterns | default([]) }}"
+    blocked_categories: "{{ item.blocked_url_categories | default([]) }}"
+    category_list_size: "{{ item.url_category_list_size | default(meraki_url_category_list_size) }}"
+  loop: "{{ meraki_content_filtering_policies | default([]) }}"
+  when: meraki_content_filtering_policies is defined

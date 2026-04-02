@@ -1,0 +1,10 @@
+---
+- name: Configure AutoVPN (site-to-site)
+  cisco.meraki.meraki_mx_vpn_firewall:
+    state: present
+    auth_key: "{{ meraki_api_key | default(omit) }}"
+    org_name: "{{ meraki_org_name }}"
+    net_name: "{{ item.network }}"
+    rules: "{{ item.rules | default([]) }}"
+  loop: "{{ meraki_vpn_firewall_policies | default([]) }}"
+  when: meraki_vpn_firewall_policies is defined

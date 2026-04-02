@@ -1,0 +1,80 @@
+name: Ansible Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      customer:
+        description: "Customer name (e.g. customer-a)"
+        required: true
+        type: string
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      playbook:
+        description: "Playbook to run"
+        required: true
+        type: choice
+        options:
+          - site.yml
+          - cisco_meraki.yml
+          - cisco_sdwan.yml
+          - paloalto.yml
+      check_mode:
+        description: "Dry run (--check)"
+        required: false
+        type: boolean
+        default: true
+      limit:
+        description: "Limit execution to specific hosts (optional)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  INVENTORY_DIR: "ansible/inventories/${{ inputs.customer }}/${{ inputs.environment }}"
+  ANSIBLE_CONFIG: "ansible/ansible.cfg"
+
+jobs:
+  deploy:
+    name: Run Ansible Playbook
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Install Galaxy collections
+        run: ansible-galaxy collection install -r ansible/requirements.yml
+
+      - name: Verify inventory directory exists
+        run: |
+          if [ ! -d "${{ env.INVENTORY_DIR }}" ]; then
+            echo "::error::Inventory directory not found: ${{ env.INVENTORY_DIR }}"
+            exit 1
+          fi
+
+      - name: Run playbook
+        run: |
+          ARGS="-i ${{ env.INVENTORY_DIR }}/"
+          if [ "${{ inputs.check_mode }}" = "true" ]; then
+            ARGS="${ARGS} --check"
+          fi
+          if [ -n "${{ inputs.limit }}" ]; then
+            ARGS="${ARGS} --limit ${{ inputs.limit }}"
+          fi
+          ansible-playbook ansible/playbooks/${{ inputs.playbook }} ${ARGS}

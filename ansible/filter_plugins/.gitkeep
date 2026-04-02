@@ -1,0 +1,2 @@
+# Placeholder for custom Ansible filter plugins.
+# Add Python filter modules here to extend Jinja2 templates.

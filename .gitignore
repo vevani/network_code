@@ -26,6 +26,7 @@ venv/
 
 # Ansible
 *.retry
+ansible/collections/
 
 # OS
 .DS_Store

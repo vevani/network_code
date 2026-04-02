@@ -1,0 +1,33 @@
+---
+- name: Create address objects
+  paloaltonetworks.panos.panos_address_object:
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ panos_username }}"
+      password: "{{ panos_password }}"
+    vsys: "{{ panos_vsys }}"
+    name: "{{ item.name }}"
+    description: "{{ item.description | default('') }}"
+    address_type: "{{ item.type | default('ip-netmask') }}"
+    value: "{{ item.value }}"
+    tag: "{{ item.tags | default([]) }}"
+    state: present
+  loop: "{{ panos_address_objects | default([]) }}"
+  when: panos_address_objects is defined
+  no_log: true
+
+- name: Create address groups
+  paloaltonetworks.panos.panos_address_group:
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ panos_username }}"
+      password: "{{ panos_password }}"
+    vsys: "{{ panos_vsys }}"
+    name: "{{ item.name }}"
+    description: "{{ item.description | default('') }}"
+    static_value: "{{ item.static_members | default([]) }}"
+    tag: "{{ item.tags | default([]) }}"
+    state: present
+  loop: "{{ panos_address_groups | default([]) }}"
+  when: panos_address_groups is defined
+  no_log: true

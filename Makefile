@@ -1,9 +1,11 @@
-.PHONY: fmt init plan apply destroy validate lint test
+.PHONY: fmt init plan apply destroy validate lint test ansible-lint ansible-syntax
 
 TF ?= tofu
 
+# --- OpenTofu targets ---
+
 fmt:
-	$(TF) fmt -recursive
+	cd opentofu && $(TF) fmt -recursive
 
 init:
 	cd $(DIR) && $(TF) init -upgrade
@@ -18,11 +20,21 @@ destroy:
 	cd $(DIR) && $(TF) destroy $(ARGS)
 
 validate:
-	$(TF) fmt -check -recursive && $(TF) validate
+	cd opentofu && $(TF) fmt -check -recursive
+
+# --- Python targets ---
 
 lint:
 	python -m py_compile scripts/meraki_to_state.py
 
 test:
 	python -m pytest tests/ -v
+
+# --- Ansible targets ---
+
+ansible-lint:
+	cd ansible && ansible-playbook --syntax-check playbooks/*.yml
+
+ansible-syntax:
+	cd ansible && ansible-playbook --syntax-check playbooks/*.yml
 
