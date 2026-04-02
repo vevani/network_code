@@ -65,7 +65,12 @@ ansible/
 │   ├── site.yml                        # Run all vendor playbooks
 │   ├── cisco_meraki.yml                # Meraki end-to-end playbook
 │   ├── cisco_sdwan.yml                 # SD-WAN end-to-end playbook
-│   └── paloalto.yml                    # PAN-OS end-to-end playbook
+│   ├── paloalto.yml                    # PAN-OS end-to-end playbook
+│   ├── backup_configs.yml              # Backup network configurations
+│   ├── network_audit.yml               # Configuration audit and compliance
+│   ├── security_hardening.yml          # Security best-practice hardening
+│   ├── vlan_management.yml             # VLAN lifecycle management
+│   └── incident_response.yml           # Emergency containment and response
 ├── filter_plugins/                     # Custom Jinja2 filters
 └── module_utils/                       # Shared module utilities
 ```
@@ -83,6 +88,14 @@ ansible/
    ```bash
    ansible-galaxy collection install -r requirements.yml
    ```
+
+   The following collections will be installed:
+
+   | Collection | Version |
+   |---|---|
+   | `cisco.meraki` | >= 2.18.0 |
+   | `cisco.catalystwan` | >= 0.3.0 |
+   | `paloaltonetworks.panos` | >= 2.19.0 |
 
 3. Set required environment variables or vault secrets (see `inventories/` `group_vars` for variable names):
 
@@ -111,6 +124,25 @@ ansible-playbook playbooks/site.yml -i inventories/customer-a/staging/
 
 # All vendors — only Meraki (using tags)
 ansible-playbook playbooks/site.yml -i inventories/customer-a/prod/ --tags meraki
+```
+
+### Operational Playbooks
+
+```bash
+# Backup configurations — customer-a prod
+ansible-playbook playbooks/backup_configs.yml -i inventories/customer-a/prod/
+
+# Network audit — customer-a prod
+ansible-playbook playbooks/network_audit.yml -i inventories/customer-a/prod/
+
+# Security hardening — customer-a prod
+ansible-playbook playbooks/security_hardening.yml -i inventories/customer-a/prod/
+
+# VLAN lifecycle management — customer-a prod
+ansible-playbook playbooks/vlan_management.yml -i inventories/customer-a/prod/
+
+# Incident response — customer-a prod
+ansible-playbook playbooks/incident_response.yml -i inventories/customer-a/prod/
 ```
 
 ## Adding a New Customer

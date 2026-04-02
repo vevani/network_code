@@ -19,7 +19,11 @@ opentofu/
 │   │   │   ├── mx-security/
 │   │   │   │   ├── firewall-rules/       # L3/L7 firewall rules
 │   │   │   │   └── content-filtering/    # Content filtering
-│   │   │   └── autovpn/                  # AutoVPN site-to-site
+│   │   │   ├── autovpn/                  # AutoVPN site-to-site
+│   │   │   ├── monitoring-network/       # Management and monitoring network
+│   │   │   ├── wan-failover/             # Dual-WAN uplink failover
+│   │   │   ├── guest-wifi/               # Isolated guest wireless network
+│   │   │   └── dmz-network/              # DMZ network segmentation
 │   │   └── sdwan/
 │   │       ├── vedge-template/           # Feature device templates
 │   │       └── vpn-policy/               # Centralized VPN policy
@@ -46,6 +50,10 @@ opentofu/
 | Cisco Meraki | `modules/cisco/meraki/mx-security/firewall-rules` | L3/L7 firewall rules |
 | Cisco Meraki | `modules/cisco/meraki/mx-security/content-filtering` | Content filtering |
 | Cisco Meraki | `modules/cisco/meraki/autovpn` | AutoVPN site-to-site |
+| Cisco Meraki | `modules/cisco/meraki/monitoring-network` | Management and monitoring network |
+| Cisco Meraki | `modules/cisco/meraki/wan-failover` | Dual-WAN uplink failover |
+| Cisco Meraki | `modules/cisco/meraki/guest-wifi` | Isolated guest wireless network |
+| Cisco Meraki | `modules/cisco/meraki/dmz-network` | DMZ network segmentation |
 | Cisco Catalyst SD-WAN | `modules/cisco/sdwan/vedge-template` | Feature device templates |
 | Cisco Catalyst SD-WAN | `modules/cisco/sdwan/vpn-policy` | Centralized VPN policy |
 | Palo Alto | `modules/paloalto/address-object` | Address objects and groups |
@@ -54,7 +62,7 @@ opentofu/
 
 ## Prerequisites
 
-- OpenTofu CLI (>= 1.6)
+- OpenTofu CLI (>= 1.11.5)
 - Environment variables for provider authentication:
 
 | Technology | Environment Variables |
