@@ -42,7 +42,7 @@ Both tools support the same three vendor stacks:
 ├── opentofu/                       # OpenTofu modules and customer environments
 │   ├── README.md
 │   ├── modules/                    # Reusable modules by vendor
-│   │   ├── cisco/meraki/
+│   │   ├── cisco/meraki/           # Networks, VLANs, MX security, AutoVPN, guest-wifi, DMZ, monitoring, WAN failover
 │   │   ├── cisco/sdwan/
 │   │   └── paloalto/
 │   └── customers/                  # Per-customer, per-environment configs
@@ -55,7 +55,16 @@ Both tools support the same three vendor stacks:
 │   │   ├── cisco_meraki/
 │   │   ├── cisco_sdwan/
 │   │   └── paloalto/
-│   ├── playbooks/                  # End-to-end and site-wide playbooks
+│   ├── playbooks/                  # End-to-end, site-wide, and operational playbooks
+│   │   ├── site.yml                # Run all vendor playbooks
+│   │   ├── cisco_meraki.yml        # Meraki end-to-end
+│   │   ├── cisco_sdwan.yml         # SD-WAN end-to-end
+│   │   ├── paloalto.yml            # PAN-OS end-to-end
+│   │   ├── backup_configs.yml      # Backup network configurations
+│   │   ├── network_audit.yml       # Configuration audit and compliance
+│   │   ├── security_hardening.yml  # Security best-practice hardening
+│   │   ├── vlan_management.yml     # VLAN lifecycle management
+│   │   └── incident_response.yml   # Emergency containment and response
 │   └── inventories/                # Per-customer, per-environment inventories
 │       └── customer-a/{dev,staging,prod}/
 ├── scripts/                        # Helper utilities
@@ -87,9 +96,17 @@ ansible-playbook playbooks/site.yml -i inventories/customer-a/prod/
 
 | Requirement | Version |
 |---|---|
-| OpenTofu CLI | >= 1.6 |
+| OpenTofu CLI | >= 1.11.5 |
 | Ansible | >= 2.15 |
-| Python | >= 3.10 |
+| Python | >= 3.12 |
+
+### Ansible Collection Requirements
+
+| Collection | Version |
+|---|---|
+| `cisco.meraki` | >= 2.18.0 |
+| `cisco.catalystwan` | >= 0.3.0 |
+| `paloaltonetworks.panos` | >= 2.19.0 |
 
 ### Environment Variables
 

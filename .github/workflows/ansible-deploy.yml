@@ -24,6 +24,11 @@ on:
           - cisco_meraki.yml
           - cisco_sdwan.yml
           - paloalto.yml
+          - backup_configs.yml
+          - network_audit.yml
+          - security_hardening.yml
+          - vlan_management.yml
+          - incident_response.yml
       check_mode:
         description: "Dry run (--check)"
         required: false

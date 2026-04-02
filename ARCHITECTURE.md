@@ -5,7 +5,7 @@ This repository organizes OpenTofu configuration and Ansible automation for mult
 ## OpenTofu Layer (`opentofu/`)
 
 - `opentofu/modules/` provide reusable, composable building blocks organized by vendor:
-  - `opentofu/modules/cisco/meraki/` – Meraki networks, VLANs, switch port profiles, MX security, AutoVPN
+  - `opentofu/modules/cisco/meraki/` – Meraki networks, VLANs, switch port profiles, MX security, AutoVPN, monitoring network, WAN failover, guest WiFi, DMZ network
   - `opentofu/modules/cisco/sdwan/` – Catalyst SD-WAN device templates and centralized VPN policy
   - `opentofu/modules/paloalto/` – PAN-OS address objects/groups, security policy, NAT policy
 - Each customer has isolated `environments/` (dev, staging, prod) with separate state and provider initialization.
@@ -30,7 +30,7 @@ The `ansible/` directory mirrors the OpenTofu customer/environment structure wit
   - `ansible/roles/cisco_meraki/` – networks, firewall, content filtering, AutoVPN, VLANs
   - `ansible/roles/cisco_sdwan/` – auth, templates, attachments, centralized policy
   - `ansible/roles/paloalto/` – address objects, security rules, NAT rules, commit
-- **Playbooks** (`ansible/playbooks/`) — end-to-end playbooks for each vendor plus a `site.yml` aggregator
+- **Playbooks** (`ansible/playbooks/`) — end-to-end playbooks for each vendor plus a `site.yml` aggregator, and operational playbooks for backup, audit, security hardening, VLAN management, and incident response
 - **Extension points** — `filter_plugins/` and `module_utils/` for custom logic
 
 See [ansible/README.md](ansible/README.md) for setup and usage instructions.
