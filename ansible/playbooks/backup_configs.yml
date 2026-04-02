@@ -1,0 +1,232 @@
+---
+# Backup Configurations – export running configurations and state from all
+# managed network devices to a local archive directory.
+#
+# Prerequisites:
+#   ansible-galaxy collection install -r requirements.yml
+#   export MERAKI_DASHBOARD_API_KEY=<your_api_key>
+#   Set vmanage / panos credentials in group_vars or vault.
+#
+# Usage:
+#   ansible-playbook playbooks/backup_configs.yml -i inventories/customer-a/prod/
+#   ansible-playbook playbooks/backup_configs.yml -i inventories/customer-a/prod/ --tags meraki
+
+- name: Cisco Meraki – backup network configurations
+  hosts: cisco_meraki
+  gather_facts: false
+  tags:
+    - meraki
+    - backup
+
+  vars:
+    backup_root: "/tmp/network_backups"
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}"
+    backup_dir: "{{ backup_root }}/meraki/{{ backup_timestamp }}"
+
+  tasks:
+    - name: Create backup directory
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Retrieve all networks in the organization
+      cisco.meraki.meraki_network:
+        org_name: "{{ meraki_org_name }}"
+        state: query
+      register: meraki_all_networks
+
+    - name: Save network list
+      ansible.builtin.copy:
+        content: "{{ meraki_all_networks.data | to_nice_yaml }}"
+        dest: "{{ backup_dir }}/networks.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Retrieve VLAN configuration for each appliance network
+      cisco.meraki.meraki_vlan:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ item.name }}"
+        state: query
+      loop: "{{ meraki_all_networks.data }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: meraki_vlan_backup
+      when: "'appliance' in (item.productTypes | default([]))"
+
+    - name: Save VLAN configurations
+      ansible.builtin.copy:
+        content: "{{ meraki_vlan_backup.results | to_nice_yaml }}"
+        dest: "{{ backup_dir }}/vlans.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Retrieve firewall rules for each appliance network
+      cisco.meraki.meraki_mx_l3_firewall:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ item.name }}"
+        state: query
+      loop: "{{ meraki_all_networks.data }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: meraki_fw_backup
+      when: "'appliance' in (item.productTypes | default([]))"
+
+    - name: Save firewall rule backup
+      ansible.builtin.copy:
+        content: "{{ meraki_fw_backup.results | to_nice_yaml }}"
+        dest: "{{ backup_dir }}/firewall_rules.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Retrieve content filtering settings
+      cisco.meraki.meraki_content_filtering:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ item.name }}"
+        state: query
+      loop: "{{ meraki_all_networks.data }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: meraki_cf_backup
+      when: "'appliance' in (item.productTypes | default([]))"
+
+    - name: Save content filtering backup
+      ansible.builtin.copy:
+        content: "{{ meraki_cf_backup.results | to_nice_yaml }}"
+        dest: "{{ backup_dir }}/content_filtering.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Display backup location
+      ansible.builtin.debug:
+        msg: "Meraki backup saved to {{ backup_dir }}"
+
+- name: Palo Alto Networks – backup firewall configuration
+  hosts: paloalto
+  gather_facts: false
+  tags:
+    - paloalto
+    - backup
+
+  vars:
+    backup_root: "/tmp/network_backups"
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}"
+    backup_dir: "{{ backup_root }}/paloalto/{{ backup_timestamp }}"
+
+  tasks:
+    - name: Create backup directory
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Export running configuration
+      paloaltonetworks.panos.panos_export:
+        category: configuration
+      register: panos_config_export
+
+    - name: Save running configuration
+      ansible.builtin.copy:
+        content: "{{ panos_config_export.stdout }}"
+        dest: "{{ backup_dir }}/running_config_{{ inventory_hostname }}.xml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Gather device facts for backup metadata
+      paloaltonetworks.panos.panos_facts:
+        gather_subset:
+          - system
+      register: panos_facts
+
+    - name: Save device metadata
+      ansible.builtin.copy:
+        content: "{{ panos_facts.ansible_facts | to_nice_yaml }}"
+        dest: "{{ backup_dir }}/device_facts_{{ inventory_hostname }}.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Backup address objects
+      paloaltonetworks.panos.panos_address_object_facts:
+      register: panos_address_backup
+
+    - name: Save address objects
+      ansible.builtin.copy:
+        content: "{{ panos_address_backup | to_nice_yaml }}"
+        dest: "{{ backup_dir }}/address_objects_{{ inventory_hostname }}.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Backup security rules
+      paloaltonetworks.panos.panos_security_rule_facts:
+      register: panos_rules_backup
+
+    - name: Save security rules
+      ansible.builtin.copy:
+        content: "{{ panos_rules_backup | to_nice_yaml }}"
+        dest: "{{ backup_dir }}/security_rules_{{ inventory_hostname }}.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Display backup location
+      ansible.builtin.debug:
+        msg: "PAN-OS backup for {{ inventory_hostname }} saved to {{ backup_dir }}"
+
+- name: Cisco SD-WAN – backup templates and policies
+  hosts: cisco_sdwan
+  gather_facts: false
+  tags:
+    - sdwan
+    - backup
+
+  vars:
+    backup_root: "/tmp/network_backups"
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}"
+    backup_dir: "{{ backup_root }}/sdwan/{{ backup_timestamp }}"
+
+  tasks:
+    - name: Create backup directory
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Retrieve all device templates
+      ansible.builtin.uri:
+        url: "https://{{ vmanage_host }}:{{ vmanage_port | default(8443) }}/dataservice/template/device"
+        method: GET
+        headers:
+          Cookie: "{{ sdwan_session_cookie | default(omit) }}"
+        validate_certs: "{{ sdwan_validate_certs | default(false) }}"
+        return_content: true
+      register: sdwan_templates_backup
+
+    - name: Save device templates
+      ansible.builtin.copy:
+        content: "{{ sdwan_templates_backup.json | to_nice_yaml }}"
+        dest: "{{ backup_dir }}/device_templates.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Retrieve centralized policies
+      ansible.builtin.uri:
+        url: "https://{{ vmanage_host }}:{{ vmanage_port | default(8443) }}/dataservice/template/policy/vsmart"
+        method: GET
+        headers:
+          Cookie: "{{ sdwan_session_cookie | default(omit) }}"
+        validate_certs: "{{ sdwan_validate_certs | default(false) }}"
+        return_content: true
+      register: sdwan_policies_backup
+
+    - name: Save centralized policies
+      ansible.builtin.copy:
+        content: "{{ sdwan_policies_backup.json | to_nice_yaml }}"
+        dest: "{{ backup_dir }}/centralized_policies.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Display backup location
+      ansible.builtin.debug:
+        msg: "SD-WAN backup saved to {{ backup_dir }}"

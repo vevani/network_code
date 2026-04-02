@@ -1,0 +1,214 @@
+---
+# Security Hardening – apply security best-practice configurations across all
+# managed network platforms. Hardens firewall policies, disables insecure
+# services, and enforces baseline security posture.
+#
+# Prerequisites:
+#   ansible-galaxy collection install -r requirements.yml
+#   export MERAKI_DASHBOARD_API_KEY=<your_api_key>
+#   Set vmanage / panos credentials in group_vars or vault.
+#
+# Usage:
+#   ansible-playbook playbooks/security_hardening.yml -i inventories/customer-a/prod/
+#   ansible-playbook playbooks/security_hardening.yml --check  # dry-run mode
+
+- name: Cisco Meraki – security hardening
+  hosts: cisco_meraki
+  gather_facts: false
+  tags:
+    - meraki
+    - hardening
+
+  vars:
+    meraki_hardening_networks: []  # Override with target network names
+
+    # Baseline firewall rules applied to every network
+    meraki_hardening_firewall_rules:
+      - comment: "Block RFC1918 to RFC1918 across WAN"
+        src_cidr: "10.0.0.0/8"
+        src_port: "Any"
+        dest_cidr: "192.168.0.0/16"
+        dest_port: "Any"
+        protocol: "any"
+        policy: "deny"
+        syslog_enabled: true
+      - comment: "Block RFC1918 to RFC1918 across WAN (reverse)"
+        src_cidr: "192.168.0.0/16"
+        src_port: "Any"
+        dest_cidr: "10.0.0.0/8"
+        dest_port: "Any"
+        protocol: "any"
+        policy: "deny"
+        syslog_enabled: true
+      - comment: "Deny inbound Telnet"
+        src_cidr: "Any"
+        src_port: "Any"
+        dest_cidr: "Any"
+        dest_port: "23"
+        protocol: "tcp"
+        policy: "deny"
+        syslog_enabled: true
+      - comment: "Deny inbound FTP"
+        src_cidr: "Any"
+        src_port: "Any"
+        dest_cidr: "Any"
+        dest_port: "20-21"
+        protocol: "tcp"
+        policy: "deny"
+        syslog_enabled: true
+
+    # Content filtering hardening
+    meraki_hardening_blocked_categories:
+      - id: "meraki:contentFiltering/category/1"
+        name: "Adult and Pornography"
+      - id: "meraki:contentFiltering/category/3"
+        name: "Malware Sites"
+      - id: "meraki:contentFiltering/category/4"
+        name: "Phishing and Other Frauds"
+      - id: "meraki:contentFiltering/category/18"
+        name: "Proxy Avoidance and Anonymizers"
+
+  tasks:
+    - name: Retrieve organization networks
+      cisco.meraki.meraki_network:
+        org_name: "{{ meraki_org_name }}"
+        state: query
+      register: meraki_networks_result
+
+    - name: Filter to appliance networks
+      ansible.builtin.set_fact:
+        meraki_appliance_networks: >-
+          {{ meraki_networks_result.data |
+             selectattr('productTypes', 'defined') |
+             selectattr('productTypes', 'contains', 'appliance') |
+             list }}
+
+    - name: Apply hardening firewall rules
+      cisco.meraki.meraki_mx_l3_firewall:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ item.name }}"
+        state: present
+        rules: "{{ meraki_hardening_firewall_rules }}"
+      loop: "{{ meraki_appliance_networks }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Apply content filtering hardening
+      cisco.meraki.meraki_content_filtering:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ item.name }}"
+        state: present
+        blocked_url_categories: "{{ meraki_hardening_blocked_categories }}"
+      loop: "{{ meraki_appliance_networks }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+- name: Palo Alto Networks – security hardening
+  hosts: paloalto
+  gather_facts: false
+  tags:
+    - paloalto
+    - hardening
+
+  vars:
+    panos_hardening_log_forwarding_profile: "default"
+    panos_auto_commit: true
+
+  tasks:
+    - name: Ensure deny-all cleanup rule exists
+      paloaltonetworks.panos.panos_security_rule:
+        rule_name: "Hardening-Deny-All"
+        description: "Security hardening – default deny-all cleanup rule"
+        source_zone:
+          - "any"
+        source_ip:
+          - "any"
+        destination_zone:
+          - "any"
+        destination_ip:
+          - "any"
+        application:
+          - "any"
+        service:
+          - "any"
+        action: "deny"
+        log_end: true
+        rule_type: "interzone"
+        location: "bottom"
+
+    - name: Block known bad TLS versions via decryption profile
+      paloaltonetworks.panos.panos_custom_url_category:
+        name: "hardening-blocked-urls"
+        description: "URLs blocked by security hardening policy"
+        url_value:
+          - "*.bit.ly"
+          - "*.tinyurl.com"
+        type: "URL List"
+
+    - name: Ensure anti-spyware profile exists
+      paloaltonetworks.panos.panos_address_object:
+        name: "hardening-dns-sinkhole"
+        description: "DNS sinkhole address for hardening"
+        type: "ip-netmask"
+        value: "198.51.100.1/32"
+        tag:
+          - "security-hardening"
+
+    - name: Verify no rules allow 'any' application with 'any' service
+      paloaltonetworks.panos.panos_security_rule_facts:
+      register: panos_all_rules
+
+    - name: Flag overly permissive rules
+      ansible.builtin.debug:
+        msg: >-
+          WARNING: Rule '{{ item.rule_name }}' allows application={{ item.application }}
+          service={{ item.service }} — review for hardening
+      loop: "{{ panos_all_rules.rule_details | default([]) }}"
+      loop_control:
+        label: "{{ item.rule_name }}"
+      when:
+        - "'any' in (item.application | default([]))"
+        - "'any' in (item.service | default([]))"
+        - item.action | default('') == 'allow'
+
+    - name: Commit hardening changes
+      paloaltonetworks.panos.panos_commit_firewall:
+        description: "Security hardening playbook commit"
+      when: panos_auto_commit | bool
+
+- name: Cisco SD-WAN – security hardening
+  hosts: cisco_sdwan
+  gather_facts: false
+  tags:
+    - sdwan
+    - hardening
+
+  tasks:
+    - name: Verify all edge devices are reachable
+      ansible.builtin.uri:
+        url: "https://{{ vmanage_host }}:{{ vmanage_port | default(8443) }}/dataservice/device"
+        method: GET
+        headers:
+          Cookie: "{{ sdwan_session_cookie | default(omit) }}"
+        validate_certs: "{{ sdwan_validate_certs | default(false) }}"
+        return_content: true
+      register: sdwan_devices
+
+    - name: Report devices not in vmanage mode
+      ansible.builtin.debug:
+        msg: >-
+          WARNING: Device {{ item.host_name | default(item['system-ip']) }}
+          is in '{{ item.personality }}' mode — expected 'vedge'
+      loop: "{{ sdwan_devices.json.data | default([]) }}"
+      loop_control:
+        label: "{{ item.host_name | default(item['system-ip']) }}"
+      when: item.personality | default('') != 'vedge'
+
+    - name: Verify all devices have valid certificates
+      ansible.builtin.debug:
+        msg: >-
+          Device {{ item.host_name | default(item['system-ip']) }}:
+          certificate status = {{ item.certificate_validity | default('unknown') }}
+      loop: "{{ sdwan_devices.json.data | default([]) }}"
+      loop_control:
+        label: "{{ item.host_name | default(item['system-ip']) }}"

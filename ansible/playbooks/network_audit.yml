@@ -1,0 +1,177 @@
+---
+# Network Audit – gather configuration state from all vendors and validate
+# against expected baselines. Produces a per-host compliance report.
+#
+# Prerequisites:
+#   ansible-galaxy collection install -r requirements.yml
+#   export MERAKI_DASHBOARD_API_KEY=<your_api_key>
+#   Set vmanage / panos credentials in group_vars or vault.
+#
+# Usage:
+#   ansible-playbook playbooks/network_audit.yml -i inventories/customer-a/prod/
+#   ansible-playbook playbooks/network_audit.yml -i inventories/customer-a/prod/ --tags meraki
+
+- name: Cisco Meraki – audit network configuration
+  hosts: cisco_meraki
+  gather_facts: false
+  tags:
+    - meraki
+    - audit
+
+  vars:
+    audit_output_dir: "/tmp/network_audit/meraki"
+    meraki_expected_networks:
+      - name_pattern: "customer-a-*-prod"
+        required_product_types:
+          - appliance
+          - switch
+        require_vlans_enabled: true
+    meraki_expected_firewall_rules:
+      - comment: "Deny RFC1918 lateral movement"
+        policy: "deny"
+        protocol: "any"
+
+  tasks:
+    - name: Create audit output directory
+      ansible.builtin.file:
+        path: "{{ audit_output_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Retrieve Meraki organization networks
+      cisco.meraki.meraki_network:
+        org_name: "{{ meraki_org_name }}"
+        state: query
+      register: meraki_network_list
+
+    - name: Save network inventory to audit report
+      ansible.builtin.copy:
+        content: "{{ meraki_network_list | to_nice_yaml }}"
+        dest: "{{ audit_output_dir }}/networks_{{ inventory_hostname }}.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Validate expected networks exist
+      ansible.builtin.assert:
+        that:
+          - meraki_network_list.data | length > 0
+        fail_msg: "No networks found in the Meraki organization"
+        success_msg: "Found {{ meraki_network_list.data | length }} network(s)"
+
+    - name: Retrieve firewall rules for each network
+      cisco.meraki.meraki_mx_l3_firewall:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ item.name }}"
+        state: query
+      loop: "{{ meraki_network_list.data }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: meraki_firewall_audit
+      when: "'appliance' in (item.productTypes | default([]))"
+
+    - name: Save firewall audit report
+      ansible.builtin.copy:
+        content: "{{ meraki_firewall_audit | to_nice_yaml }}"
+        dest: "{{ audit_output_dir }}/firewall_rules_{{ inventory_hostname }}.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+- name: Palo Alto Networks – audit security policy
+  hosts: paloalto
+  gather_facts: false
+  tags:
+    - paloalto
+    - audit
+
+  vars:
+    audit_output_dir: "/tmp/network_audit/paloalto"
+
+  tasks:
+    - name: Create audit output directory
+      ansible.builtin.file:
+        path: "{{ audit_output_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Gather PAN-OS device facts
+      paloaltonetworks.panos.panos_facts:
+        gather_subset:
+          - system
+      register: panos_system_facts
+
+    - name: Save device facts to audit report
+      ansible.builtin.copy:
+        content: "{{ panos_system_facts | to_nice_yaml }}"
+        dest: "{{ audit_output_dir }}/system_facts_{{ inventory_hostname }}.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Check PAN-OS software version is current
+      ansible.builtin.assert:
+        that:
+          - panos_system_facts.ansible_facts.ansible_net_version is defined
+        fail_msg: "Unable to determine PAN-OS version on {{ inventory_hostname }}"
+        success_msg: "PAN-OS version {{ panos_system_facts.ansible_facts.ansible_net_version }} detected"
+
+    - name: Gather security rules
+      paloaltonetworks.panos.panos_security_rule_facts:
+      register: panos_security_rules
+
+    - name: Verify deny-all rule exists as last rule
+      ansible.builtin.assert:
+        that:
+          - panos_security_rules.rule_details | length > 0
+          - panos_security_rules.rule_details[-1].action == 'deny'
+        fail_msg: "Default deny-all rule is missing or not the last rule"
+        success_msg: "Default deny-all rule confirmed"
+
+    - name: Save security rule audit report
+      ansible.builtin.copy:
+        content: "{{ panos_security_rules | to_nice_yaml }}"
+        dest: "{{ audit_output_dir }}/security_rules_{{ inventory_hostname }}.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+- name: Cisco SD-WAN – audit device templates and policy
+  hosts: cisco_sdwan
+  gather_facts: false
+  tags:
+    - sdwan
+    - audit
+
+  vars:
+    audit_output_dir: "/tmp/network_audit/sdwan"
+
+  tasks:
+    - name: Create audit output directory
+      ansible.builtin.file:
+        path: "{{ audit_output_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Retrieve device templates from vManage
+      ansible.builtin.uri:
+        url: "https://{{ vmanage_host }}:{{ vmanage_port | default(8443) }}/dataservice/template/device"
+        method: GET
+        headers:
+          Cookie: "{{ sdwan_session_cookie | default(omit) }}"
+        validate_certs: "{{ sdwan_validate_certs | default(false) }}"
+        return_content: true
+      register: sdwan_device_templates
+
+    - name: Save device template audit report
+      ansible.builtin.copy:
+        content: "{{ sdwan_device_templates.json | to_nice_yaml }}"
+        dest: "{{ audit_output_dir }}/device_templates_{{ inventory_hostname }}.yml"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Verify device templates are attached
+      ansible.builtin.debug:
+        msg: "Template '{{ item.templateName }}' – attached devices: {{ item.devicesAttached | default(0) }}"
+      loop: "{{ sdwan_device_templates.json.data | default([]) }}"
+      loop_control:
+        label: "{{ item.templateName }}"

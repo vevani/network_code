@@ -1,0 +1,204 @@
+---
+# Incident Response – emergency playbook for rapid network containment.
+# Blocks malicious IP addresses, isolates compromised networks, and enables
+# enhanced logging for forensic analysis.
+#
+# Prerequisites:
+#   ansible-galaxy collection install -r requirements.yml
+#   export MERAKI_DASHBOARD_API_KEY=<your_api_key>
+#   Set panos credentials in group_vars or vault.
+#
+# Usage:
+#   ansible-playbook playbooks/incident_response.yml -i inventories/customer-a/prod/ \
+#     -e '{"incident_block_ips": ["203.0.113.50", "198.51.100.99"]}'
+#   ansible-playbook playbooks/incident_response.yml -e "incident_isolate_network=customer-a-branch-office-prod"
+
+- name: Palo Alto Networks – incident response containment
+  hosts: paloalto
+  gather_facts: false
+  tags:
+    - paloalto
+    - incident
+
+  vars:
+    # IP addresses to block (override via -e)
+    incident_block_ips: []
+
+    # Whether to auto-commit changes
+    panos_auto_commit: true
+
+    # Tag for incident-related objects
+    incident_tag: "incident-response"
+
+  tasks:
+    - name: Validate incident parameters
+      ansible.builtin.assert:
+        that:
+          - incident_block_ips | length > 0
+        fail_msg: >-
+          No IPs to block. Pass incident_block_ips as extra vars, e.g.:
+          -e '{"incident_block_ips": ["203.0.113.50"]}'
+        success_msg: "Blocking {{ incident_block_ips | length }} IP address(es)"
+
+    - name: Create address objects for malicious IPs
+      paloaltonetworks.panos.panos_address_object:
+        name: "incident-block-{{ item | replace('.', '-') }}"
+        description: "Incident response – blocked IP {{ item }}"
+        type: "ip-netmask"
+        value: "{{ item }}/32"
+        tag:
+          - "{{ incident_tag }}"
+      loop: "{{ incident_block_ips }}"
+
+    - name: Create address group for all blocked IPs
+      paloaltonetworks.panos.panos_address_group:
+        name: "grp-incident-blocked"
+        description: "All IPs blocked during incident response"
+        static_value: >-
+          {{ incident_block_ips |
+             map('regex_replace', '\.', '-') |
+             map('regex_replace', '^', 'incident-block-') |
+             list }}
+        tag:
+          - "{{ incident_tag }}"
+
+    - name: Create emergency block rule (highest priority)
+      paloaltonetworks.panos.panos_security_rule:
+        rule_name: "INCIDENT-Block-Malicious-IPs"
+        description: "Emergency incident response – block malicious IPs"
+        source_zone:
+          - "any"
+        source_ip:
+          - "grp-incident-blocked"
+        destination_zone:
+          - "any"
+        destination_ip:
+          - "any"
+        application:
+          - "any"
+        service:
+          - "any"
+        action: "deny"
+        log_start: true
+        log_end: true
+        location: "top"
+        tag:
+          - "{{ incident_tag }}"
+
+    - name: Create emergency block rule (reverse – inbound from malicious)
+      paloaltonetworks.panos.panos_security_rule:
+        rule_name: "INCIDENT-Block-From-Malicious-IPs"
+        description: "Emergency incident response – block traffic from malicious IPs"
+        source_zone:
+          - "any"
+        source_ip:
+          - "any"
+        destination_zone:
+          - "any"
+        destination_ip:
+          - "grp-incident-blocked"
+        application:
+          - "any"
+        service:
+          - "any"
+        action: "deny"
+        log_start: true
+        log_end: true
+        location: "top"
+        tag:
+          - "{{ incident_tag }}"
+
+    - name: Commit incident response changes
+      paloaltonetworks.panos.panos_commit_firewall:
+        description: "INCIDENT RESPONSE – emergency IP block"
+      when: panos_auto_commit | bool
+
+    - name: Display incident response summary
+      ansible.builtin.debug:
+        msg: |
+          === INCIDENT RESPONSE SUMMARY ===
+          Blocked IPs: {{ incident_block_ips | join(', ') }}
+          Rules created: INCIDENT-Block-Malicious-IPs, INCIDENT-Block-From-Malicious-IPs
+          Address group: grp-incident-blocked
+          Auto-commit: {{ panos_auto_commit }}
+
+- name: Cisco Meraki – incident response containment
+  hosts: cisco_meraki
+  gather_facts: false
+  tags:
+    - meraki
+    - incident
+
+  vars:
+    # Network to isolate (override via -e)
+    incident_isolate_network: ""
+
+    # IPs to block at the MX firewall level
+    incident_block_ips: []
+
+    # Emergency firewall rules to prepend
+    incident_emergency_rules: []
+
+  tasks:
+    - name: Build emergency block rules from incident IPs
+      ansible.builtin.set_fact:
+        incident_emergency_rules: >-
+          {{ incident_emergency_rules + [
+            {
+              'comment': 'INCIDENT – Block ' + item,
+              'src_cidr': item + '/32',
+              'src_port': 'Any',
+              'dest_cidr': 'Any',
+              'dest_port': 'Any',
+              'protocol': 'any',
+              'policy': 'deny',
+              'syslog_enabled': true
+            },
+            {
+              'comment': 'INCIDENT – Block to ' + item,
+              'src_cidr': 'Any',
+              'src_port': 'Any',
+              'dest_cidr': item + '/32',
+              'dest_port': 'Any',
+              'protocol': 'any',
+              'policy': 'deny',
+              'syslog_enabled': true
+            }
+          ] }}
+      loop: "{{ incident_block_ips }}"
+      when: incident_block_ips | length > 0
+
+    - name: Apply emergency firewall rules to all networks
+      cisco.meraki.meraki_mx_l3_firewall:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ item.name }}"
+        state: present
+        rules: "{{ incident_emergency_rules }}"
+      loop: "{{ meraki_network_list.data | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when:
+        - incident_emergency_rules | length > 0
+        - "'appliance' in (item.productTypes | default([]))"
+
+    - name: Retrieve network list for isolation
+      cisco.meraki.meraki_network:
+        org_name: "{{ meraki_org_name }}"
+        state: query
+      register: meraki_network_list
+      when: incident_isolate_network | length > 0
+
+    - name: Display isolation target
+      ansible.builtin.debug:
+        msg: >-
+          INCIDENT: Network '{{ incident_isolate_network }}' flagged for isolation.
+          Manual VLAN/VPN changes may be required via Dashboard for full isolation.
+      when: incident_isolate_network | length > 0
+
+    - name: Display Meraki incident response summary
+      ansible.builtin.debug:
+        msg: |
+          === MERAKI INCIDENT RESPONSE SUMMARY ===
+          Blocked IPs: {{ incident_block_ips | default([]) | join(', ') | default('none') }}
+          Emergency rules applied: {{ incident_emergency_rules | default([]) | length }}
+          Isolation target: {{ incident_isolate_network | default('none') }}
