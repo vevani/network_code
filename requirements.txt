@@ -1,4 +1,7 @@
 meraki>=1.50.0
 python-hcl2>=4.3.4
 pytest>=8.0.0
+ruff>=0.4.0
+mypy>=1.10.0
+pybatfish>=2024.1.1
 
