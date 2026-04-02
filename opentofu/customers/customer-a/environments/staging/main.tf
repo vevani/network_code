@@ -11,13 +11,13 @@ module "networks" {
   for_each = var.networks
   source   = "../../../../modules/cisco/meraki/network"
 
-  organization_id = module.shared.meraki_org_id
-  network_name    = coalesce(try(each.value.name, null), each.key)
-  product_types   = try(each.value.product_types, ["appliance", "switch", "wireless"])
-  tags            = concat(local.base_tags, try(each.value.tags, []))
-  timezone        = try(each.value.timezone, "America/New_York")
-  notes           = try(each.value.notes, "")
-  enable_vlans    = try(each.value.enable_vlans, true)
+  organization_id            = module.shared.meraki_org_id
+  network_name               = coalesce(try(each.value.name, null), each.key)
+  product_types              = try(each.value.product_types, ["appliance", "switch", "wireless"])
+  tags                       = concat(local.base_tags, try(each.value.tags, []))
+  timezone                   = try(each.value.timezone, "America/New_York")
+  notes                      = try(each.value.notes, "")
+  enable_vlans               = try(each.value.enable_vlans, true)
   local_status_page_enabled  = try(each.value.local_status_page_enabled, false)
   remote_status_page_enabled = try(each.value.remote_status_page_enabled, true)
 }
@@ -35,11 +35,11 @@ module "networks_content_filtering" {
   for_each = { for k, v in var.networks : k => v if try(v.include_content_filtering, false) }
   source   = "../../../../modules/cisco/meraki/mx-security/content-filtering"
 
-  network_id              = module.networks[each.key].network_id
-  allowed_url_patterns    = try(each.value.allowed_url_patterns, [])
-  blocked_url_patterns    = try(each.value.blocked_url_patterns, [])
-  blocked_url_categories  = try(each.value.blocked_url_categories, [])
-  url_category_list_size  = try(each.value.url_category_list_size, "topSites")
+  network_id             = module.networks[each.key].network_id
+  allowed_url_patterns   = try(each.value.allowed_url_patterns, [])
+  blocked_url_patterns   = try(each.value.blocked_url_patterns, [])
+  blocked_url_categories = try(each.value.blocked_url_categories, [])
+  url_category_list_size = try(each.value.url_category_list_size, "topSites")
 }
 
 module "networks_autovpn" {

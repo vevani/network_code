@@ -1,0 +1,193 @@
+---
+# VLAN Management – create, update, or remove VLANs across Meraki networks.
+# Supports bulk VLAN provisioning with DHCP, naming, and subnet configuration.
+#
+# Prerequisites:
+#   ansible-galaxy collection install -r requirements.yml
+#   export MERAKI_DASHBOARD_API_KEY=<your_api_key>
+#
+# Usage:
+#   ansible-playbook playbooks/vlan_management.yml -i inventories/customer-a/prod/
+#   ansible-playbook playbooks/vlan_management.yml -e "vlan_action=create"
+#   ansible-playbook playbooks/vlan_management.yml -e "vlan_action=delete"
+#   ansible-playbook playbooks/vlan_management.yml --check  # dry-run
+
+- name: Cisco Meraki – VLAN lifecycle management
+  hosts: cisco_meraki
+  gather_facts: false
+  tags:
+    - meraki
+    - vlans
+
+  vars:
+    # Action: "create", "update", or "delete"
+    vlan_action: "create"
+
+    # Target networks to manage VLANs on
+    vlan_target_networks:
+      - "customer-a-branch-office-prod"
+
+    # Standard VLAN definitions
+    vlan_definitions:
+      - vlan_id: 10
+        name: "Workstations"
+        subnet: "192.168.10.0/24"
+        appliance_ip: "192.168.10.1"
+        dhcp_handling: "Run a DHCP server"
+        dns_nameservers: "upstream_dns"
+        reserved_ip_ranges: []
+
+      - vlan_id: 20
+        name: "Servers"
+        subnet: "192.168.20.0/24"
+        appliance_ip: "192.168.20.1"
+        dhcp_handling: "Run a DHCP server"
+        dns_nameservers: "upstream_dns"
+        reserved_ip_ranges:
+          - start: "192.168.20.1"
+            end: "192.168.20.20"
+            comment: "Reserved for static assignments"
+
+      - vlan_id: 30
+        name: "Printers"
+        subnet: "192.168.30.0/24"
+        appliance_ip: "192.168.30.1"
+        dhcp_handling: "Run a DHCP server"
+        dns_nameservers: "upstream_dns"
+        reserved_ip_ranges: []
+
+      - vlan_id: 40
+        name: "VoIP"
+        subnet: "192.168.40.0/24"
+        appliance_ip: "192.168.40.1"
+        dhcp_handling: "Run a DHCP server"
+        dns_nameservers: "upstream_dns"
+        reserved_ip_ranges: []
+
+      - vlan_id: 100
+        name: "Management"
+        subnet: "192.168.100.0/24"
+        appliance_ip: "192.168.100.1"
+        dhcp_handling: "Do not respond to DHCP requests"
+        dns_nameservers: "upstream_dns"
+        reserved_ip_ranges: []
+
+  tasks:
+    - name: Ensure VLANs are enabled on target networks
+      cisco.meraki.meraki_network:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ item }}"
+        state: present
+        enable_vlans: true
+      loop: "{{ vlan_target_networks }}"
+      when: vlan_action != "delete"
+
+    - name: Create or update VLANs
+      cisco.meraki.meraki_mx_vlan:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ network_name }}"
+        state: present
+        vlan_id: "{{ item.vlan_id }}"
+        name: "{{ item.name }}"
+        subnet: "{{ item.subnet }}"
+        appliance_ip: "{{ item.appliance_ip }}"
+        dns_nameservers: "{{ item.dns_nameservers | default('upstream_dns') }}"
+      loop: "{{ vlan_definitions }}"
+      loop_control:
+        label: "VLAN {{ item.vlan_id }} ({{ item.name }})"
+      vars:
+        network_name: "{{ vlan_target_networks[0] }}"
+      when: vlan_action in ["create", "update"]
+
+    - name: Delete VLANs
+      cisco.meraki.meraki_mx_vlan:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ network_name }}"
+        state: absent
+        vlan_id: "{{ item.vlan_id }}"
+      loop: "{{ vlan_definitions }}"
+      loop_control:
+        label: "VLAN {{ item.vlan_id }} ({{ item.name }})"
+      vars:
+        network_name: "{{ vlan_target_networks[0] }}"
+      when: vlan_action == "delete"
+
+    - name: Verify VLAN configuration
+      cisco.meraki.meraki_mx_vlan:
+        org_name: "{{ meraki_org_name }}"
+        net_name: "{{ network_name }}"
+        state: query
+      vars:
+        network_name: "{{ vlan_target_networks[0] }}"
+      register: vlan_verification
+      when: vlan_action != "delete"
+
+    - name: Display VLAN summary
+      ansible.builtin.debug:
+        msg: >-
+          Network '{{ vlan_target_networks[0] }}' now has
+          {{ vlan_verification.data | default([]) | length }} VLAN(s) configured
+      when: vlan_action != "delete"
+
+- name: Palo Alto Networks – VLAN interface and zone management
+  hosts: paloalto
+  gather_facts: false
+  tags:
+    - paloalto
+    - vlans
+
+  vars:
+    panos_vlan_definitions:
+      - name: "vlan.10"
+        tag: 10
+        ip: "192.168.10.1/24"
+        zone: "workstation-zone"
+        comment: "Workstation VLAN subinterface"
+      - name: "vlan.20"
+        tag: 20
+        ip: "192.168.20.1/24"
+        zone: "server-zone"
+        comment: "Server VLAN subinterface"
+
+    panos_auto_commit: true
+
+  tasks:
+    - name: Ensure address objects exist for VLAN subnets
+      paloaltonetworks.panos.panos_address_object:
+        name: "net-vlan{{ item.tag }}"
+        description: "{{ item.comment }}"
+        type: "ip-netmask"
+        value: "{{ item.ip | ansible.utils.ipaddr('network/prefix') }}"
+        tag:
+          - "vlan-managed"
+      loop: "{{ panos_vlan_definitions }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Ensure inter-VLAN routing security rules
+      paloaltonetworks.panos.panos_security_rule:
+        rule_name: "Allow-VLAN{{ item.0.tag }}-to-VLAN{{ item.1.tag }}"
+        description: "Allow traffic from VLAN {{ item.0.tag }} to VLAN {{ item.1.tag }}"
+        source_zone:
+          - "{{ item.0.zone }}"
+        source_ip:
+          - "net-vlan{{ item.0.tag }}"
+        destination_zone:
+          - "{{ item.1.zone }}"
+        destination_ip:
+          - "net-vlan{{ item.1.tag }}"
+        application:
+          - "any"
+        service:
+          - "application-default"
+        action: "allow"
+        log_end: true
+      loop: "{{ panos_vlan_definitions | community.general.combinations(2) }}"
+      loop_control:
+        label: "VLAN{{ item.0.tag }} -> VLAN{{ item.1.tag }}"
+      when: panos_vlan_definitions | length > 1
+
+    - name: Commit VLAN changes
+      paloaltonetworks.panos.panos_commit_firewall:
+        description: "VLAN management playbook commit"
+      when: panos_auto_commit | bool

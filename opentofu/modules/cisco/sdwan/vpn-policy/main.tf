@@ -31,8 +31,8 @@ resource "sdwan_topology_hub_and_spoke_topology" "this" {
       dynamic "hubs" {
         for_each = spokes.value.hubs
         content {
-          site_list_id    = hubs.value.site_list_id
-          preference      = hubs.value.preference
+          site_list_id     = hubs.value.site_list_id
+          preference       = hubs.value.preference
           ipv4_restriction = hubs.value.ipv4_restriction
         }
       }

@@ -27,8 +27,8 @@ variable "hub_and_spoke_topologies" {
     spokes = list(object({
       site_list_id = string
       hubs = list(object({
-        site_list_id    = string
-        preference      = optional(string, "")
+        site_list_id     = string
+        preference       = optional(string, "")
         ipv4_restriction = optional(bool, false)
       }))
     }))

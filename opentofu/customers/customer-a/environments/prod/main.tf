@@ -13,7 +13,7 @@ module "branch_office_network" {
   organization_id = module.shared.meraki_org_id
   network_name    = "${var.customer_slug}-branch-office-${var.environment}"
   product_types   = ["appliance", "switch", "wireless"]
-  tags            = concat(local.base_tags, ["branch-office"]) 
+  tags            = concat(local.base_tags, ["branch-office"])
   timezone        = "America/New_York"
   notes           = "${var.environment} branch office network"
   enable_vlans    = true
@@ -25,7 +25,7 @@ module "headquarters_network" {
   organization_id = module.shared.meraki_org_id
   network_name    = "${var.customer_slug}-hq-${var.environment}"
   product_types   = ["appliance", "switch", "wireless", "camera"]
-  tags            = concat(local.base_tags, ["headquarters"]) 
+  tags            = concat(local.base_tags, ["headquarters"])
   timezone        = "America/New_York"
   notes           = "${var.environment} headquarters network"
   enable_vlans    = true

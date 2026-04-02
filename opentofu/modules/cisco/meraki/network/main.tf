@@ -14,7 +14,7 @@ resource "meraki_networks_vlans_settings" "this" {
 }
 
 resource "meraki_networks_settings" "this" {
-  network_id = meraki_networks.this.network_id
+  network_id                 = meraki_networks.this.network_id
   local_status_page_enabled  = var.local_status_page_enabled
   remote_status_page_enabled = var.remote_status_page_enabled
 }
