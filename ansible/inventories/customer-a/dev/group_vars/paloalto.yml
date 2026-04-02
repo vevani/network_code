@@ -1,0 +1,12 @@
+---
+# Palo Alto Networks group variables — dev environment
+# Set PAN-OS connection details via Vault.
+
+# panorama_host: "198.51.100.20"
+# pa_fw_01_host: "198.51.100.21"
+# panos_username: "{{ lookup('env', 'PANOS_USERNAME') }}"
+# panos_password: "{{ lookup('env', 'PANOS_PASSWORD') }}"
+
+panos_validate_certs: false
+panos_vsys: "vsys1"
+panos_commit_timeout: 300

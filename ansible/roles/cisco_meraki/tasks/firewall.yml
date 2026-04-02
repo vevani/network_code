@@ -1,0 +1,10 @@
+---
+- name: Configure MX L3 firewall rules
+  cisco.meraki.meraki_mx_l3_firewall:
+    state: present
+    auth_key: "{{ meraki_api_key | default(omit) }}"
+    org_name: "{{ meraki_org_name }}"
+    net_name: "{{ item.network }}"
+    rules: "{{ item.rules }}"
+  loop: "{{ meraki_firewall_policies | default([]) }}"
+  when: meraki_firewall_policies is defined

@@ -1,0 +1,9 @@
+---
+- name: Commit configuration
+  paloaltonetworks.panos.panos_commit_firewall:
+    provider:
+      ip_address: "{{ ansible_host }}"
+      username: "{{ panos_username }}"
+      password: "{{ panos_password }}"
+    timeout: "{{ panos_commit_timeout }}"
+  when: panos_auto_commit | default(true)

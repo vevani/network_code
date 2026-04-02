@@ -1,0 +1,13 @@
+---
+- name: Ensure Meraki networks exist
+  cisco.meraki.networks:
+    state: present
+    auth_key: "{{ meraki_api_key | default(omit) }}"
+    org_name: "{{ meraki_org_name }}"
+    net_name: "{{ item.name }}"
+    type: "{{ item.product_types | join(' ') }}"
+    tags: "{{ item.tags | default([]) }}"
+    timezone: "{{ item.timezone | default(meraki_default_timezone) }}"
+  loop: "{{ meraki_networks }}"
+  when: meraki_networks is defined
+  register: meraki_network_results

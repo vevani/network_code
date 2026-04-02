@@ -1,0 +1,7 @@
+---
+# Variables applied to all hosts — staging environment
+# Sensitive values should be stored in Ansible Vault or an external secrets manager.
+
+ansible_diff_mode: false
+environment_name: staging
+customer_name: customer-a

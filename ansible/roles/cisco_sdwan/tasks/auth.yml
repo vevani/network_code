@@ -1,0 +1,9 @@
+---
+- name: Authenticate to vManage and obtain session token
+  cisco.catalystwan.vmanage_login:
+    manager_authentication:
+      url: "https://{{ vmanage_host }}:{{ vmanage_port | default(443) }}"
+      username: "{{ vmanage_username }}"
+      password: "{{ vmanage_password }}"
+  register: sdwan_session
+  no_log: true

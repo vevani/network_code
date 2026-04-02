@@ -1,0 +1,14 @@
+---
+- name: Configure centralized VPN policy
+  cisco.catalystwan.centralized_policy:
+    manager_session: "{{ sdwan_session.session }}"
+    policy_name: "{{ sdwan_centralized_policy.name }}"
+    policy_description: "{{ sdwan_centralized_policy.description | default('') }}"
+    assemblies: "{{ sdwan_centralized_policy.assemblies | default([]) }}"
+  when: sdwan_centralized_policy is defined
+
+- name: Activate centralized policy
+  cisco.catalystwan.activate_centralized_policy:
+    manager_session: "{{ sdwan_session.session }}"
+    policy_name: "{{ sdwan_centralized_policy.name }}"
+  when: sdwan_centralized_policy is defined and sdwan_activate_policy | default(false)

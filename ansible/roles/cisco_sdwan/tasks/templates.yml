@@ -1,0 +1,11 @@
+---
+- name: Create or update vEdge feature device templates
+  cisco.catalystwan.device_templates:
+    manager_session: "{{ sdwan_session.session }}"
+    template_name: "{{ item.name }}"
+    template_description: "{{ item.description | default('') }}"
+    device_type: "{{ item.device_type | default(sdwan_default_device_type) }}"
+    device_role: "{{ item.device_role | default(sdwan_default_device_role) }}"
+    feature_template_ids: "{{ item.feature_template_ids | default([]) }}"
+  loop: "{{ sdwan_device_templates | default([]) }}"
+  when: sdwan_device_templates is defined
