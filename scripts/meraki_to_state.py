@@ -19,25 +19,27 @@ Notes:
 - This script targets the module structure in this repository (branch + HQ networks
   and related MX settings for the branch network). Adjust or extend mappings as needed.
 """
+from __future__ import annotations
+
 import argparse
 import json
 import os
+import platform
+import re
 import subprocess
 import sys
 from pathlib import Path
-import re
-import platform
-from typing import Dict, List, Optional, Tuple
+from typing import Any
 
-import meraki  # type: ignore
 import hcl2  # type: ignore
+import meraki  # type: ignore
 
 
 class CommandError(RuntimeError):
     pass
 
 
-def run_cmd(command: List[str], cwd: Path, env: Optional[Dict[str, str]] = None) -> Tuple[int, str, str]:
+def run_cmd(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> tuple[int, str, str]:
     process = subprocess.Popen(
         command,
         cwd=str(cwd),
@@ -66,7 +68,7 @@ def import_state(env_dir: Path, tofu_bin: str, address: str, import_id: str) -> 
         raise CommandError(f"tofu import failed for {address} with id {import_id}: {err or out}")
 
 
-def read_tfvars(tfvars_path: Path) -> Dict[str, object]:
+def read_tfvars(tfvars_path: Path) -> dict[str, Any]:
     with tfvars_path.open("r", encoding="utf-8") as f:
         content = f.read()
     # hcl2 loads to python types
@@ -74,7 +76,7 @@ def read_tfvars(tfvars_path: Path) -> Dict[str, object]:
     return data
 
 
-def resolve_org_id(dashboard: meraki.DashboardAPI, target_org_name: Optional[str]) -> Tuple[str, str]:
+def resolve_org_id(dashboard: meraki.DashboardAPI, target_org_name: str | None) -> tuple[str, str]:
     orgs = dashboard.organizations.getOrganizations()
     if not orgs:
         raise RuntimeError("No organizations available to the API key.")
@@ -87,9 +89,9 @@ def resolve_org_id(dashboard: meraki.DashboardAPI, target_org_name: Optional[str
     return orgs[0]["id"], orgs[0]["name"]
 
 
-def fetch_networks_by_name(dashboard: meraki.DashboardAPI, org_id: str) -> Dict[str, Dict[str, object]]:
-    networks: List[Dict[str, object]] = dashboard.organizations.getOrganizationNetworks(org_id, total_pages="all")
-    by_name: Dict[str, Dict[str, object]] = {}
+def fetch_networks_by_name(dashboard: meraki.DashboardAPI, org_id: str) -> dict[str, dict[str, Any]]:
+    networks: list[dict[str, Any]] = dashboard.organizations.getOrganizationNetworks(org_id, total_pages="all")
+    by_name: dict[str, dict[str, Any]] = {}
     for net in networks:
         name = str(net.get("name", ""))
         if name:
@@ -97,7 +99,7 @@ def fetch_networks_by_name(dashboard: meraki.DashboardAPI, org_id: str) -> Dict[
     return by_name
 
 
-def planned_network_names(customer_slug: str, environment: str) -> Dict[str, str]:
+def planned_network_names(customer_slug: str, environment: str) -> dict[str, str]:
     # Default naming patterns used by this repo's modules
     return {
         "branch_office_network": f"{customer_slug}-branch-office-{environment}",
@@ -107,10 +109,10 @@ def planned_network_names(customer_slug: str, environment: str) -> Dict[str, str
 
 def build_import_plan(
     env_dir: Path,
-    tfvars: Dict[str, object],
-    networks_by_name: Dict[str, Dict[str, object]],
-    name_overrides: Optional[Dict[str, str]] = None,
-) -> List[Tuple[str, str]]:
+    tfvars: dict[str, Any],
+    networks_by_name: dict[str, dict[str, Any]],
+    name_overrides: dict[str, str] | None = None,
+) -> list[tuple[str, str]]:
     """Return list of (address, import_id) pairs to import.
 
     Assumes all singleton resources import by network_id.
@@ -123,7 +125,7 @@ def build_import_plan(
     if name_overrides:
         names.update({k: v for k, v in name_overrides.items() if v})
 
-    plan: List[Tuple[str, str]] = []
+    plan: list[tuple[str, str]] = []
 
     def add_network_module_imports(module_name: str, network_id: str, enable_vlans: bool = enable_vlans_default) -> None:
         # meraki_networks
@@ -220,7 +222,7 @@ def main() -> None:
         sys.exit(2)
 
     # Allow overriding org-name via CLI; otherwise use tfvars
-    org_name: Optional[str] = args.org_name or (
+    org_name: str | None = args.org_name or (
         str(tfvars.get("meraki_org_name")) if tfvars.get("meraki_org_name") is not None else None
     )
 
@@ -278,10 +280,10 @@ def main() -> None:
         return
 
     # optional name overrides
-    name_overrides: Dict[str, str] = {}
+    name_overrides: dict[str, str] = {}
     if args.network_map_json:
         try:
-            with open(args.network_map_json, "r", encoding="utf-8") as f:
+            with open(args.network_map_json, encoding="utf-8") as f:
                 name_overrides.update(json.load(f))
         except Exception as ex:
             print(f"Failed to read --network-map-json: {ex}", file=sys.stderr)
@@ -322,7 +324,7 @@ def main() -> None:
         print(f"Init failed: {ex}", file=sys.stderr)
         sys.exit(2)
 
-    failures: List[Tuple[str, str, str]] = []
+    failures: list[tuple[str, str, str]] = []
     for address, import_id in import_plan:
         try:
             import_state(env_dir, args.tofu_bin, address, import_id)
